@@ -1,1 +1,35 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>SecureCode Pro Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">🛡️ SecureCode Pro</h1>
+    <div class="max-w-2xl mx-auto">
+        <textarea id="code" class="w-full h-64 p-4 bg-gray-800 rounded border border-gray-700" placeholder="ضع الكود هنا..."></textarea>
+        <select id="lang" class="w-full p-2 mt-2 bg-gray-800 rounded">
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="php">PHP</option>
+        </select>
+        <button onclick="scanCode()" class="w-full mt-4 bg-blue-600 p-3 rounded font-bold">فحص الكود (Scan)</button>
+        <div id="result" class="mt-6"></div>
+    </div>
 
+    <script>
+        async function scanCode() {
+            const code = document.getElementById('code').value;
+            const language = document.getElementById('lang').value;
+            const res = await fetch('/scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code, language})
+            });
+            const data = await res.json();
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>
