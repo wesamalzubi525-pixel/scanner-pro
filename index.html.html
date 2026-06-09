@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureCode Pro 🛡️</title>
+<style>
+  /* ══════ RESET & ROOT ══════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0d1117;
+    --bg2:       #161b22;
+    --bg3:       #21262d;
+    --border:    #30363d;
+    --text:      #c9d1d9;
+    --text-dim:  #8b949e;
+    --text-hi:   #f0f6fc;
+    --blue:      #58a6ff;
+    --green:     #3fb950;
+    --yellow:    #e3b341;
+    --orange:    #f0883e;
+    --red:       #f85149;
+    --red-dark:  #da3633;
+    --mono:      'Courier New', 'Consolas', monospace;
+    --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+  /* ══════ TOP BAR ══════ */
+  #topbar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, #f85149, #ff9500);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .logo-title  { font-size: 16px; font-weight: 700; color: var(--text-hi); }
+  .logo-sub    { font-size: 11px; color: var(--text-dim); }
+  #server-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-dim);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); transition: background .3s;
+  }
+  .dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.offline { background: var(--red); }
+  .dot.checking{ background: var(--yellow); animation: blink 1s infinite; }
+
+  /* ══════ LAYOUT ══════ */
+  #app {
+    display: grid; grid-template-columns: 1fr 1fr;
+    height: calc(100vh - 61px); min-height: 0;
+  }
+  .panel { display: flex; flex-direction: column; overflow: hidden; }
+  .panel-left  { border-right: 1px solid var(--border); }
+  .panel-head  {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .panel-label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); }
+
+  /* ══════ LANGUAGE TABS ══════ */
+  .lang-tabs { display: flex; gap: 4px; }
+  .ltab {
+    padding: 4px 11px; border-radius: 5px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-dim);
+    font-size: 11px; font-family: var(--mono); cursor: pointer; transition: all .15s;
+  }
+  .ltab:hover { background: var(--bg3); color: var(--text); }
+  .ltab.active { background: rgba(88,166,255,.12); border-color: var(--blue); color: var(--blue); }
+
+  /* ══════ CODE EDITOR ══════ */
+  #code-editor {
+    flex: 1; background: var(--bg); border: none; resize: none; outline: none;
+    color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.75;
+    padding: 16px 18px; tab-size: 2; min-height: 0;
+  }
+  #code-editor::placeholder { color: #3a4149; }
+
+  /* ══════ BOTTOM BAR (editor) ══════ */
+  .editor-bottom {
+    background: var(--bg2); border-top: 1px solid var(--border);
+    padding: 8px 14px; flex-shrink: 0;
+  }
+  #scan-btn {
+    width: 100%; padding: 10px; border-radius: 8px; border: none;
+    background: var(--red-dark); color: #fff; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .15s; display: flex; align-items: center;
+    justify-content: center; gap: 8px; letter-spacing: .3px;
+  }
+  #scan-btn:hover:not(:disabled) { background: var(--red); transform: translateY(-1px); }
+  #scan-btn:disabled { background: var(--bg3); color: var(--text-dim); cursor: not-allowed; transform: none; }
+  #scan-btn .spin { animation: spin .7s linear infinite; display: inline-block; }
+
+  .snippets { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .snip-label { font-size: 10px; color: var(--border); }
+  .snip {
+    padding: 3px 8px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text-dim); font-size: 11px; cursor: pointer; transition: all .15s;
+  }
+  .snip:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* ══════ RESULTS PANEL ══════ */
+  #results-area { flex: 1; overflow-y: auto; padding: 14px; min-height: 0; }
+  #results-area::-webkit-scrollbar { width: 4px; }
+  #results-area::-webkit-scrollbar-track { background: var(--bg); }
+  #results-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Score card ── */
+  #score-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 12px; display: none;
+  }
+  .score-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .score-num  { font-size: 36px; font-weight: 800; line-height: 1; }
+  .score-100  { color: var(--green); }
+  .score-hi   { color: var(--yellow); }
+  .score-med  { color: var(--orange); }
+  .score-lo   { color: var(--red); }
+  .score-bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; margin: 4px 0 10px; }
+  .score-bar  { height: 6px; border-radius: 4px; transition: width .5s ease; }
+  .stat-row   { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+  .stat-box   { background: var(--bg3); border-radius: 6px; padding: 6px 8px; text-align: center; }
+  .stat-n     { font-size: 18px; font-weight: 700; }
+  .stat-l     { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px; }
+  .c-critical .stat-n { color: var(--red); }
+  .c-high     .stat-n { color: var(--orange); }
+  .c-medium   .stat-n { color: var(--yellow); }
+  .c-low      .stat-n { color: var(--green); }
+
+  /* ── Recommendation ── */
+  #rec-box {
+    background: rgba(88,166,255,.07); border: 1px solid rgba(88,166,255,.2);
+    border-radius: 8px; padding: 10px 13px; margin-bottom: 12px;
+    font-size: 12px; color: var(--text); line-height: 1.6; display: none;
+  }
+
+  /* ── Vuln cards ── */
+  .vcard {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 9px; overflow: hidden; transition: border-color .15s;
+  }
+  .vcard:hover { border-color: rgba(88,166,255,.3); }
+  .vcard-head  {
+    padding: 11px 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  }
+  .badge {
+    padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; flex-shrink: 0; margin-top: 2px;
+  }
+  .b-critical { background: rgba(248,81,73,.15); color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+  .b-high     { background: rgba(240,136,62,.15); color: var(--orange); border: 1px solid rgba(240,136,62,.3); }
+  .b-medium   { background: rgba(227,179,65,.15); color: var(--yellow); border: 1px solid rgba(227,179,65,.3); }
+  .b-low      { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+  .vcard-info  { flex: 1; min-width: 0; }
+  .vcard-name  { font-size: 13px; font-weight: 600; color: var(--text-hi); margin-bottom: 4px; }
+  .vcard-meta  { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag-line    {
+    font-size: 10px; background: rgba(227,179,65,.12); color: var(--yellow);
+    border-radius: 3px; padding: 1px 6px; font-family: var(--mono);
+  }
+  .tag-owasp   {
+    font-size: 10px; background: rgba(88,166,255,.1); color: var(--blue);
+    border-radius: 3px; padding: 1px 6px;
+  }
+  .chevron { color: var(--text-dim); font-size: 11px; transition: transform .2s; flex-shrink: 0; margin-top: 3px; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .vcard-body  { border-top: 1px solid var(--bg3); padding: 12px 14px; display: none; }
+  .vcard-body.open { display: block; }
+  .sec-title   { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 6px; }
+  .sec-block   { margin-bottom: 12px; }
+  .sec-block:last-child { margin-bottom: 0; }
+  .desc-text   { font-size: 12px; color: var(--text); line-height: 1.7; }
+  pre.code-bad, pre.code-fix {
+    font-family: var(--mono); font-size: 12px; line-height: 1.6;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; white-space: pre-wrap; word-break: break-all;
+  }
+  pre.code-bad { color: var(--red); border-color: rgba(248,81,73,.25); }
+  pre.code-fix { color: var(--green); border-color: rgba(63,185,80,.25); }
+
+  /* ── Empty / error / clean states ── */
+  .state-box {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; gap: 10px; text-align: center;
+    color: var(--text-dim); padding: 20px;
+  }
+  .state-icon  { font-size: 48px; opacity: .25; }
+  .state-title { font-size: 14px; }
+  .state-sub   { font-size: 12px; color: var(--border); }
+
+  .clean-box   {
+    background: rgba(63,185,80,.07); border: 1px solid rgba(63,185,80,.25);
+    border-radius: 10px; padding: 24px; text-align: center;
+  }
+  .clean-icon  { font-size: 40px; margin-bottom: 8px; }
+  .clean-title { color: var(--green); font-size: 16px; font-weight: 700; }
+  .clean-sub   { color: var(--text-dim); font-size: 12px; margin-top: 5px; }
+
+  .error-box   {
+    background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3);
+    border-radius: 10px; padding: 16px; color: var(--red); font-size: 13px; line-height: 1.7;
+  }
+
+  /* ══════ LOADING ══════ */
+  .loading-box {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; gap: 14px; color: var(--text-dim);
+  }
+  .loader {
+    width: 44px; height: 44px; border: 2px solid var(--border);
+    border-top-color: var(--red); border-radius: 50%; animation: spin .75s linear infinite;
+  }
+
+  /* ══════ ANIMATIONS ══════ */
+  @keyframes spin  { to { transform: rotate(360deg); } }
+  @keyframes blink { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    <div>
+      <div class="logo-title">SecureCode Pro</div>
+      <div class="logo-sub">OWASP Top 10 — Local Engine</div>
+    </div>
+  </div>
+  <div id="server-status">
+    <div class="dot checking" id="status-dot"></div>
+    <span id="status-text">جارٍ الاتصال بالسيرفر…</span>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+
+  <!-- LEFT: EDITOR -->
+  <div class="panel panel-left">
+    <div class="panel-head">
+      <span class="panel-label">📝 محرر الكود</span>
+      <div class="lang-tabs" id="lang-tabs">
+        <button class="ltab active" data-lang="python">Python</button>
+        <button class="ltab" data-lang="javascript">JS</button>
+        <button class="ltab" data-lang="php">PHP</button>
+        <button class="ltab" data-lang="java">Java</button>
+        <button class="ltab" data-lang="cpp">C++</button>
+      </div>
+    </div>
+
+    <textarea id="code-editor"
+      spellcheck="false"
+      placeholder="# الصق كودك هنا أو اختر مثالاً من الأسفل…"></textarea>
+
+    <div class="editor-bottom">
+      <button id="scan-btn" onclick="runScan()">🛡️ فحص الثغرات الأمنية</button>
+      <div class="snippets">
+        <span class="snip-label">أمثلة:</span>
+        <button class="snip" onclick="loadSnippet('sqli')">SQL Injection</button>
+        <button class="snip" onclick="loadSnippet('xss')">XSS</button>
+        <button class="snip" onclick="loadSnippet('cmd')">Cmd Inject</button>
+        <button class="snip" onclick="loadSnippet('crypto')">ضعف تشفير</button>
+        <button class="snip" onclick="loadSnippet('hardcoded')">Hardcoded Keys</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">🔎 نتائج الفحص</span>
+      <span id="result-badge" style="font-size:11px;color:var(--text-dim)"></span>
+    </div>
+    <div id="results-area">
+      <div class="state-box">
+        <div class="state-icon">🛡️</div>
+        <div class="state-title">جاهز للفحص</div>
+        <div class="state-sub">اكتب الكود واضغط الزر — يحلل OWASP Top 10 فورياً</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
+<script>
+const SERVER = "http://127.0.0.1:5000";
+let currentLang = "python";
+
+/* ── Server health check ── */
+async function checkServer() {
+  const dot  = document.getElementById("status-dot");
+  const text = document.getElementById("status-text");
+  dot.className = "dot checking";
+  text.textContent = "جارٍ الاتصال…";
+  try {
+    const r = await fetch(`${SERVER}/health`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      dot.className = "dot online";
+      text.textContent = "السيرفر متصل ✓";
+    } else { throw new Error(); }
+  } catch {
+    dot.className = "dot offline";
+    text.textContent = "السيرفر غير متصل ✗";
+  }
+}
+checkServer();
+setInterval(checkServer, 15000);   // فحص كل 15 ثانية
+
+/* ── Language tabs ── */
+document.getElementById("lang-tabs").addEventListener("click", e => {
+  const btn = e.target.closest(".ltab");
+  if (!btn) return;
+  document.querySelectorAll(".ltab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentLang = btn.dataset.lang;
+});
+
+/* ══════════════════════════════════════
+   runScan — دالة الفحص الرئيسية
+════════════════════════════════════════ */
+async function runScan() {
+  const code = document.getElementById("code-editor").value.trim();
+  if (!code) { alert("الرجاء إدخال كود للفحص"); return; }
+
+  const btn = document.getElementById("scan-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⟳</span> جارٍ الفحص…';
+
+  showLoading();
+
+  try {
+    /* ── 1. إرسال POST للسيرفر ── */
+    const response = await fetch(`${SERVER}/scan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, language: currentLang }),
+      signal: AbortSignal.timeout(30000)   // 30 ثانية timeout
+    });
+
+    /* ── 2. التحقق من كود الاستجابة ── */
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || `خطأ من السيرفر: ${response.status}`);
+    }
+
+    /* ── 3. قراءة JSON ── */
+    const data = await response.json();
+
+    /* ── 4. عرض النتائج ── */
+    renderResults(data);
+
+  } catch (err) {
+    /* ── معالجة الأخطاء ── */
+    let msg = err.message || "خطأ غير معروف";
+
+    if (err.name === "TimeoutError" || err.name === "AbortError") {
+      msg = "انتهت مهلة الاتصال — تأكد أن السيرفر يعمل";
+    } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+      msg = `تعذّر الوصول للسيرفر على ${SERVER}\n\nتأكد أنك شغّلت:  python app.py`;
+    }
+
+    showError(msg);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "🛡️ فحص الثغرات الأمنية";
+  }
+}
+
+/* ══════════════════════════════════════
+   RENDER FUNCTIONS
+════════════════════════════════════════ */
+function showLoading() {
+  document.getElementById("result-badge").textContent = "";
+  document.getElementById("results-area").innerHTML = `
+    <div class="loading-box">
+      <div class="loader"></div>
+      <div>🔍 يحلل المحرك الكود…</div>
+    </div>`;
+}
+
+function showError(msg) {
+  document.getElementById("results-area").innerHTML =
+    `<div style="padding:16px"><div class="error-box">
+      <strong>⚠️ تعذّر إجراء الفحص</strong><br><br>
+      ${escHtml(msg)}<br><br>
+      <small style="color:var(--text-dim)">
+        خطوات الإصلاح:<br>
+        1. افتح CMD وشغّل: <code>python app.py</code><br>
+        2. تأكد أن Flask يعمل على المنفذ 5000<br>
+        3. اضغط زر الفحص مجدداً
+      </small>
+    </div></div>`;
+}
+
+function renderResults(data) {
+  const vulns = data.vulnerabilities || [];
+  const badge = document.getElementById("result-badge");
+  badge.textContent = vulns.length ? `${vulns.length} ثغرة مكتشفة` : "كود آمن ✓";
+
+  /* ── حالة لا ثغرات ── */
+  if (!vulns.length) {
+    document.getElementById("results-area").innerHTML = `
+      <div style="padding:16px">
+        <div class="clean-box">
+          <div class="clean-icon">✅</div>
+          <div class="clean-title">لم تُكتشف ثغرات!</div>
+          <div class="clean-sub">${escHtml(data.recommendation || data.summary || "")}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  /* ── إحصائيات ── */
+  const cnt = { critical:0, high:0, medium:0, low:0 };
+  vulns.forEach(v => { if (v.severity in cnt) cnt[v.severity]++; });
+
+  const scoreNum  = data.score ?? 0;
+  const scoreClass = scoreNum >= 80 ? "score-100" : scoreNum >= 60 ? "score-hi" : scoreNum >= 40 ? "score-med" : "score-lo";
+  const barColor   = scoreNum >= 80 ? "var(--green)" : scoreNum >= 60 ? "var(--yellow)" : scoreNum >= 40 ? "var(--orange)" : "var(--red)";
+
+  let html = `
+    <div id="score-card" style="display:block">
+      <div class="score-row">
+        <div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:3px">درجة الأمان</div>
+          <div class="score-num ${scoreClass}">${scoreNum}<span style="font-size:16px;font-weight:400">/100</span></div>
+        </div>
+        <div style="font-size:30px">🛡️</div>
+      </div>
+      <div class="score-bar-wrap">
+        <div class="score-bar" style="width:${scoreNum}%;background:${barColor}"></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box c-critical"><div class="stat-n">${cnt.critical}</div><div class="stat-l">حرج</div></div>
+        <div class="stat-box c-high">    <div class="stat-n">${cnt.high}</div>    <div class="stat-l">عالي</div></div>
+        <div class="stat-box c-medium">  <div class="stat-n">${cnt.medium}</div>  <div class="stat-l">متوسط</div></div>
+        <div class="stat-box c-low">     <div class="stat-n">${cnt.low}</div>     <div class="stat-l">منخفض</div></div>
+      </div>
+    </div>`;
+
+  if (data.recommendation) {
+    html += `<div id="rec-box" style="display:block">💡 ${escHtml(data.recommendation)}</div>`;
+  }
+
+  /* ── بطاقات الثغرات ── */
+  vulns.forEach((v, i) => {
+    const sevLabel = { critical:"حرج", high:"عالي", medium:"متوسط", low:"منخفض" }[v.severity] || v.severity;
+    html += `
+      <div class="vcard">
+        <div class="vcard-head" onclick="toggle(${i})">
+          <span class="badge b-${v.severity}">${sevLabel}</span>
+          <div class="vcard-info">
+            <div class="vcard-name">${escHtml(v.name)}</div>
+            <div class="vcard-meta">
+              ${v.line ? `<span class="tag-line">السطر ${v.line}</span>` : ""}
+              <span class="tag-owasp">${escHtml(v.owasp || "OWASP")}</span>
+            </div>
+          </div>
+          <span class="chevron" id="ch-${i}">▼</span>
+        </div>
+        <div class="vcard-body" id="bd-${i}">
+          ${v.description ? `
+          <div class="sec-block">
+            <div class="sec-title">⚠️ الوصف</div>
+            <div class="desc-text">${escHtml(v.description)}</div>
+          </div>` : ""}
+          ${v.vulnerable_code ? `
+          <div class="sec-block">
+            <div class="sec-title">🔴 الكود المشكل</div>
+            <pre class="code-bad">${escHtml(v.vulnerable_code)}</pre>
+          </div>` : ""}
+          ${v.fix ? `
+          <div class="sec-block">
+            <div class="sec-title">✅ الإصلاح المقترح</div>
+            <pre class="code-fix">${escHtml(v.fix)}</pre>
+          </div>` : ""}
+          ${v.explanation ? `
+          <div class="sec-block">
+            <div class="sec-title">💡 شرح الإصلاح</div>
+            <div class="desc-text">${escHtml(v.explanation)}</div>
+          </div>` : ""}
+        </div>
+      </div>`;
+  });
+
+  document.getElementById("results-area").innerHTML = html;
+  /* افتح أول بطاقة تلقائياً */
+  if (vulns.length) toggle(0);
+}
+
+function toggle(i) {
+  const bd = document.getElementById(`bd-${i}`);
+  const ch = document.getElementById(`ch-${i}`);
+  const open = bd.classList.toggle("open");
+  ch.classList.toggle("open", open);
+}
+
+function escHtml(s) {
+  return String(s || "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/\n/g,"<br>");
+}
+
+/* ══════════════════════════════════════
+   CODE SNIPPETS
+════════════════════════════════════════ */
+const SNIPPETS = {
+  sqli: {
+    python: `import sqlite3
+
+def get_user(username):
+    conn = sqlite3.connect('users.db')
+    # ثغرة SQL Injection!
+    query = "SELECT * FROM users WHERE username = '" + username + "'"
+    return conn.execute(query).fetchall()`,
+    javascript: `app.get('/user', (req, res) => {
+  const id = req.query.id;
+  // SQL Injection
+  const q = "SELECT * FROM users WHERE id = " + id;
+  db.query(q, (err, rows) => res.json(rows));
+});`,
+    php: `<?php
+$id = $_GET['id'];
+$q  = "SELECT * FROM users WHERE id = $id";
+$r  = mysqli_query($conn, $q);
+echo json_encode(mysqli_fetch_all($r));`
+  },
+  xss: {
+    javascript: `// XSS عبر innerHTML
+const name = new URLSearchParams(location.search).get('name');
+document.getElementById('welcome').innerHTML = 'مرحباً ' + name;
+
+// XSS عبر document.write
+document.write('<p>' + userInput + '</p>');`,
+    python: `from flask import Flask, request
+app = Flask(__name__)
+
+@app.route('/search')
+def search():
+    q = request.args.get('q', '')
+    # Reflected XSS
+    return f'<html><body><h1>نتائج: {q}</h1></body></html>'`,
+    php: `<?php
+$name = $_GET['name'];
+echo "<h1>مرحباً $name!</h1>";  // XSS`
+  },
+  cmd: {
+    python: `import os, subprocess
+
+def ping(host):
+    # Command Injection
+    os.system("ping -c 4 " + host)
+
+def read_file(name):
+    # Command Injection
+    data = subprocess.check_output("cat /data/" + name, shell=True)
+    return data`,
+    php: `<?php
+$ip = $_GET['ip'];
+system("ping -c 3 " . $ip);  // Command Injection
+exec("traceroute " . $ip, $out);`,
+    cpp: `#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char buf[64];
+    gets(buf);           // Buffer Overflow
+    char out[128];
+    sprintf(out, buf);  // Format String
+    printf(out);
+}`
+  },
+  crypto: {
+    python: `import hashlib
+import random
+
+# تشفير ضعيف
+def hash_password(password):
+    return hashlib.md5(password.encode()).hexdigest()
+
+def hash2(password):
+    return hashlib.sha1(password.encode()).hexdigest()
+
+# مولد غير آمن
+token = str(random.randint(100000, 999999))`,
+    javascript: `const crypto = require('crypto');
+
+// MD5 ضعيف
+function hashPwd(p) {
+  return crypto.createHash('md5').update(p).digest('hex');
+}
+
+// مولد غير آمن تشفيرياً
+const token = Math.random().toString(36).slice(2);`,
+    java: `import java.security.MessageDigest;
+
+MessageDigest md = MessageDigest.getInstance("MD5");
+byte[] hash = md.digest(password.getBytes());`
+  },
+  hardcoded: {
+    python: `# بيانات حساسة مكتوبة مباشرة!
+SECRET_KEY = "mysecretkey123"
+password   = "admin@123"
+API_KEY    = "sk-abcdefgh1234567890"
+DB_PASS    = "root"
+
+def connect():
+    return psycopg2.connect(
+        host="localhost",
+        password="MyDB@Pass2024"
+    )`,
+    javascript: `// Hardcoded secrets
+const SECRET = "jwt-secret-key";
+const apikey = "AIzaSyAbCdEfGhIjKlMnOpQrStUv";
+const token  = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+const config = {
+  password: "admin123",
+  api_key:  "live_pk_abc123xyz"
+};`,
+    php: `<?php
+define('DB_PASS',   'root123');
+define('SECRET_KEY','s3cr3tK3y!');
+$api_key = "sk-live-XXXXXXXXXXXX";`
+  }
+};
+
+function loadSnippet(type) {
+  const lang = currentLang;
+  const group = SNIPPETS[type] || {};
+  const code  = group[lang] || group[Object.keys(group)[0]] || "";
+  document.getElementById("code-editor").value = code;
+}
+</script>
+</body>
+</html>
