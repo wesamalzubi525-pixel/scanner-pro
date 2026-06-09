@@ -606,11 +606,8 @@ def health():
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "name":      "SecureCode Pro API v3",
-        "endpoints": {"scan": "POST /scan", "health": "GET /health"},
-        "body":      {"code": "string", "language": "python|javascript|php|java|cpp"},
-    })
+    return render_template("index.html")
+    
 
 
 # ══════════════════════════════════════════════════════════════
