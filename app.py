@@ -6,6 +6,7 @@ SecureCode Pro — app.py v3
 """
 
 from flask import Flask, request, jsonify
+from flask import render_template 
 from flask_cors import CORS
 import ast
 import re
