@@ -1,967 +1,815 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VaultScan — فاحص الثغرات البرمجية</title>
+  <title>VulnGuard — Vulnerability Scanner & Remediation</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Chart.js for Doughnut chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: {
-            bg:      '#0a0c0f',
-            surface: '#0f1318',
-            panel:   '#141920',
-            border:  '#1e2730',
-            cyan:    '#00d4c8',
-            green:   '#39ff7e',
-            amber:   '#f59e0b',
-            red:     '#ff4757',
-            muted:   '#4a5568',
-            text:    '#c9d4e0',
-          },
           fontFamily: {
-            mono: ['IBM Plex Mono', 'monospace'],
             sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
           },
-        },
-      },
-    };
+          colors: {
+            base:    '#0D0F14',
+            surface: '#141720',
+            card:    '#1A1D26',
+            border:  '#252837',
+            cyber:   '#00FF87',
+            warn:    '#FF6B35',
+            danger:  '#FF3E3E',
+            caution: '#FFD166',
+            info:    '#60A5FA',
+            muted:   '#6B7280',
+            text:    '#E2E8F0',
+          }
+        }
+      }
+    }
   </script>
 
   <style>
     * { box-sizing: border-box; }
-    body { background: #0a0c0f; color: #c9d4e0; font-family: 'Inter', sans-serif; }
+
+    body {
+      background-color: #0D0F14;
+      font-family: 'Inter', sans-serif;
+      color: #E2E8F0;
+      min-height: 100vh;
+    }
 
     /* Scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: #0f1318; }
-    ::-webkit-scrollbar-thumb { background: #1e2730; border-radius: 2px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #141720; }
+    ::-webkit-scrollbar-thumb { background: #252837; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00FF87; }
 
-    /* Sidebar active glow */
-    .nav-active {
-      background: rgba(0, 212, 200, 0.08);
-      border-left: 2px solid #00d4c8;
-      color: #00d4c8;
+    /* Glow scan button */
+    .scan-btn {
+      background: linear-gradient(135deg, #00FF87 0%, #00C9FF 100%);
+      color: #0D0F14;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .nav-item {
-      border-left: 2px solid transparent;
-      transition: all 0.2s ease;
+    .scan-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 28px rgba(0,255,135,0.45);
     }
-    .nav-item:hover { background: rgba(255,255,255,0.04); color: #c9d4e0; }
+    .scan-btn:active { transform: translateY(0px); }
+    .scan-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      pointer-events: none;
+    }
 
-    /* Scan button pulse ring */
+    /* Pulse ring animation on button */
     @keyframes pulse-ring {
-      0%   { box-shadow: 0 0 0 0 rgba(0,212,200,0.35); }
-      70%  { box-shadow: 0 0 0 14px rgba(0,212,200,0); }
-      100% { box-shadow: 0 0 0 0 rgba(0,212,200,0); }
+      0%   { transform: scale(0.9); opacity: 0.8; }
+      100% { transform: scale(1.4); opacity: 0; }
     }
-    .scan-btn { animation: pulse-ring 2.4s cubic-bezier(0.4,0,0.6,1) infinite; }
-    .scan-btn:hover { animation: none; box-shadow: 0 0 28px rgba(0,212,200,0.5); }
-    .scan-btn:active { transform: scale(0.97); }
-
-    /* Scanning bar animation */
-    @keyframes scan-bar {
-      0%   { transform: translateY(-100%); opacity: 0; }
-      10%  { opacity: 1; }
-      90%  { opacity: 1; }
-      100% { transform: translateY(calc(100vh)); opacity: 0; }
+    .scan-btn.scanning::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 12px;
+      border: 2px solid #00FF87;
+      animation: pulse-ring 1s ease-out infinite;
     }
-    .scan-line {
-      animation: scan-bar 2.8s ease-in-out infinite;
-      background: linear-gradient(to bottom, transparent, rgba(0,212,200,0.25), transparent);
-    }
-
-    /* Progress bar shimmer */
-    @keyframes shimmer {
-      0%   { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-    .progress-shimmer {
-      background: linear-gradient(90deg, #00d4c8 0%, #39ff7e 50%, #00d4c8 100%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s linear infinite;
-    }
-
-    /* Textarea code style */
-    .code-area {
-      background: #080b0e;
-      border: 1px solid #1e2730;
-      color: #c9d4e0;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      line-height: 1.7;
-      resize: vertical;
-      transition: border-color 0.2s;
-    }
-    .code-area:focus { outline: none; border-color: #00d4c8; box-shadow: 0 0 0 1px rgba(0,212,200,0.2); }
 
     /* Severity badges */
-    .badge-critical { background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
-    .badge-high     { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
-    .badge-medium   { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
-    .badge-low      { background: rgba(57,255,126,0.1);  color: #39ff7e; border: 1px solid rgba(57,255,126,0.25); }
-    .badge-info     { background: rgba(0,212,200,0.1);   color: #00d4c8; border: 1px solid rgba(0,212,200,0.25); }
+    .badge-critical { background: rgba(255,62,62,0.15);  color: #FF3E3E;  border: 1px solid rgba(255,62,62,0.35); }
+    .badge-high     { background: rgba(255,107,53,0.15); color: #FF6B35;  border: 1px solid rgba(255,107,53,0.35); }
+    .badge-medium   { background: rgba(255,209,102,0.15);color: #FFD166;  border: 1px solid rgba(255,209,102,0.35); }
+    .badge-low      { background: rgba(96,165,250,0.15); color: #60A5FA;  border: 1px solid rgba(96,165,250,0.35); }
 
-    /* Card hover */
-    .stat-card { transition: border-color 0.2s, transform 0.2s; }
-    .stat-card:hover { border-color: #00d4c8; transform: translateY(-2px); }
+    /* Vuln card left border */
+    .vuln-card { border-left: 3px solid transparent; transition: border-color 0.2s, box-shadow 0.2s; }
+    .vuln-card.critical { border-left-color: #FF3E3E; }
+    .vuln-card.high     { border-left-color: #FF6B35; }
+    .vuln-card.medium   { border-left-color: #FFD166; }
+    .vuln-card.low      { border-left-color: #60A5FA; }
+    .vuln-card:hover    { box-shadow: 0 4px 24px rgba(0,255,135,0.06); }
 
-    /* Result row */
-    .vuln-row { border-bottom: 1px solid #1a2028; transition: background 0.15s; }
-    .vuln-row:hover { background: rgba(0,212,200,0.04); cursor: pointer; }
-    .vuln-row:last-child { border-bottom: none; }
-
-    /* Fade-in */
-    @keyframes fade-up {
-      from { opacity: 0; transform: translateY(12px); }
+    /* Fade-in animation */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .fade-up { animation: fade-up 0.4s ease both; }
-
-    /* Terminal typing cursor */
-    @keyframes blink { 50% { opacity: 0; } }
-    .cursor { animation: blink 1s step-start infinite; }
-
-    /* Section header accent */
-    .section-accent { width: 3px; background: linear-gradient(to bottom, #00d4c8, #39ff7e); border-radius: 2px; }
-
-    /* Logo shimmer text */
-    .logo-text {
-      background: linear-gradient(90deg, #00d4c8, #39ff7e, #00d4c8);
-      background-size: 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: shimmer 3s linear infinite;
+    .fade-in {
+      animation: fadeInUp 0.4s ease forwards;
+      opacity: 0;
     }
+    .fade-in-delay-1 { animation-delay: 0.05s; }
+    .fade-in-delay-2 { animation-delay: 0.10s; }
+    .fade-in-delay-3 { animation-delay: 0.15s; }
+    .fade-in-delay-4 { animation-delay: 0.20s; }
+    .fade-in-delay-5 { animation-delay: 0.25s; }
+
+    /* Code block inside cards */
+    .code-block {
+      background: #0D0F14;
+      border: 1px solid #252837;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.65;
+      overflow-x: auto;
+      padding: 14px 16px;
+      color: #00FF87;
+      position: relative;
+    }
+    .code-block .comment { color: #4B5563; }
+    .code-block .keyword { color: #60A5FA; }
+    .code-block .string  { color: #FFD166; }
+
+    /* Textarea */
+    .code-input {
+      background: #0D0F14;
+      border: 1px solid #252837;
+      color: #E2E8F0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      resize: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .code-input:focus {
+      outline: none;
+      border-color: #00FF87;
+      box-shadow: 0 0 0 3px rgba(0,255,135,0.08);
+    }
+
+    /* Stats bar */
+    .stat-item { border-right: 1px solid #252837; }
+    .stat-item:last-child { border-right: none; }
+
+    /* Scan line animation */
+    @keyframes scan-line {
+      0%   { top: 0%; opacity: 0.8; }
+      100% { top: 100%; opacity: 0; }
+    }
+    .scan-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .scan-overlay::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00FF87, transparent);
+      animation: scan-line 1.5s linear infinite;
+    }
+
+    /* Empty state */
+    .empty-glow {
+      box-shadow: 0 0 60px rgba(0,255,135,0.04);
+    }
+
+    /* Copy button */
+    .copy-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: #252837;
+      border: 1px solid #333648;
+      color: #9CA3AF;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .copy-btn:hover { background: #2E3347; color: #00FF87; }
+
+    /* Loading dots */
+    @keyframes dot-bounce {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #0D0F14; animation: dot-bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.30s; }
+
+    /* Scrollable results panel */
+    #results-panel { overflow-y: auto; max-height: calc(100vh - 220px); }
+    #code-panel    { overflow-y: auto; max-height: calc(100vh - 220px); }
+
+    /* Collapse toggle */
+    .fix-body { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+    .fix-body.collapsed { max-height: 0; opacity: 0; }
+    .fix-body.expanded  { max-height: 1000px; opacity: 1; }
   </style>
 </head>
-<body class="min-h-screen flex overflow-hidden" style="background:#0a0c0f">
+<body class="antialiased">
 
-<!-- ═══════════════════════  SIDEBAR  ═══════════════════════ -->
-<aside class="w-16 lg:w-56 flex-shrink-0 flex flex-col" style="background:#080b0e; border-right:1px solid #1a2028; height:100vh; position:sticky; top:0;">
+  <!-- ══════════════ TOP NAV ══════════════ -->
+  <header class="sticky top-0 z-50 border-b border-border" style="background: rgba(13,15,20,0.92); backdrop-filter: blur(12px);">
+    <div class="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between">
 
-  <!-- Logo -->
-  <div class="flex items-center gap-3 px-4 py-5 mb-2" style="border-bottom:1px solid #1a2028;">
-    <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(0,212,200,0.12); border:1px solid rgba(0,212,200,0.25);">
-      <i data-lucide="shield-check" class="w-4 h-4" style="color:#00d4c8;"></i>
-    </div>
-    <div class="hidden lg:block">
-      <div class="font-bold text-sm tracking-widest logo-text font-mono">VAULTSCAN</div>
-      <div class="text-xs" style="color:#3a4a5a; font-family: 'IBM Plex Mono'; margin-top:-1px;">v2.4.1 — Enterprise</div>
-    </div>
-  </div>
-
-  <!-- Nav -->
-  <nav class="flex-1 px-2 py-3 space-y-1">
-    <button onclick="switchView('dashboard')" id="nav-dashboard"
-      class="nav-item nav-active w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
-      style="font-family:'IBM Plex Mono';">
-      <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
-      <span class="hidden lg:inline">لوحة التحكم</span>
-    </button>
-    <button onclick="switchView('scan')" id="nav-scan"
-      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
-      style="color:#4a5568; font-family:'IBM Plex Mono';">
-      <i data-lucide="search-code" class="w-4 h-4 flex-shrink-0"></i>
-      <span class="hidden lg:inline">فحص الكود</span>
-    </button>
-    <button onclick="switchView('logs')" id="nav-logs"
-      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
-      style="color:#4a5568; font-family:'IBM Plex Mono';">
-      <i data-lucide="terminal" class="w-4 h-4 flex-shrink-0"></i>
-      <span class="hidden lg:inline">السجلات</span>
-    </button>
-    <button onclick="switchView('settings')" id="nav-settings"
-      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
-      style="color:#4a5568; font-family:'IBM Plex Mono';">
-      <i data-lucide="settings-2" class="w-4 h-4 flex-shrink-0"></i>
-      <span class="hidden lg:inline">الإعدادات</span>
-    </button>
-  </nav>
-
-  <!-- Status indicator -->
-  <div class="px-4 py-4" style="border-top:1px solid #1a2028;">
-    <div class="hidden lg:flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 6px #39ff7e;"></span>
-      <span class="text-xs font-mono" style="color:#4a5568;">ENGINE ONLINE</span>
-    </div>
-    <div class="lg:hidden flex justify-center">
-      <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 6px #39ff7e;"></span>
-    </div>
-  </div>
-</aside>
-
-<!-- ═══════════════════════  MAIN CONTENT  ═══════════════════════ -->
-<main class="flex-1 flex flex-col overflow-auto" style="height:100vh;">
-
-  <!-- Top bar -->
-  <header class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background:#080b0e; border-bottom:1px solid #1a2028;">
-    <div>
-      <h1 id="page-title" class="text-base font-semibold" style="color:#e2e8f0;">لوحة التحكم</h1>
-      <p id="page-subtitle" class="text-xs font-mono mt-0.5" style="color:#3a4a5a;">نظرة عامة على حالة الأمان</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded" style="background:#0f1318; border:1px solid #1e2730;">
-        <i data-lucide="clock" class="w-3 h-3" style="color:#3a4a5a;"></i>
-        <span id="live-clock" class="text-xs font-mono" style="color:#4a5568;"></span>
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg,#00FF87,#00C9FF);">
+          <i data-lucide="shield-check" class="w-4 h-4" style="color:#0D0F14;"></i>
+        </div>
+        <span class="font-bold text-base tracking-tight">VulnGuard</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-mono" style="background:#1A1D26;border:1px solid #252837;color:#6B7280;">v2.4.1</span>
       </div>
-      <button class="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono transition-all"
-        style="background:rgba(0,212,200,0.08); border:1px solid rgba(0,212,200,0.2); color:#00d4c8;"
-        onmouseover="this.style.background='rgba(0,212,200,0.15)'"
-        onmouseout="this.style.background='rgba(0,212,200,0.08)'">
-        <i data-lucide="bell" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">3 تنبيهات</span>
-      </button>
-      <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs"
-        style="background:linear-gradient(135deg,#00d4c8,#39ff7e); color:#080b0e;">أم</div>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-4">
+        <span class="hidden md:flex items-center gap-1.5 text-xs text-muted">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyber animate-pulse"></span>
+          Engine Online
+        </span>
+        <button class="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-border text-muted hover:text-text hover:border-cyber transition-colors">
+          <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+          Settings
+        </button>
+        <button class="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-border text-muted hover:text-text hover:border-cyber transition-colors">
+          <i data-lucide="history" class="w-3.5 h-3.5"></i>
+          History
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- ── DASHBOARD VIEW ── -->
-  <div id="view-dashboard" class="flex-1 p-6 overflow-auto">
+  <!-- ══════════════ MAIN LAYOUT ══════════════ -->
+  <main class="max-w-screen-2xl mx-auto px-6 py-6">
 
-    <!-- Stats grid -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-start justify-between mb-3">
-          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.2);">
-            <i data-lucide="skull" class="w-4 h-4" style="color:#ff4757;"></i>
-          </div>
-          <span class="badge-critical text-xs px-2 py-0.5 rounded font-mono">+3</span>
+    <!-- Summary stats bar (hidden until results appear) -->
+    <div id="stats-bar" class="hidden mb-5 rounded-xl border border-border fade-in" style="background:#141720;">
+      <div class="grid grid-cols-2 md:grid-cols-5 divide-x divide-border">
+        <div class="stat-item px-5 py-3 flex flex-col gap-0.5">
+          <span class="text-xs text-muted">Total Found</span>
+          <span id="stat-total" class="text-xl font-bold text-text font-mono">0</span>
         </div>
-        <div class="text-2xl font-bold font-mono mb-1" style="color:#ff4757;" id="stat-critical">07</div>
-        <div class="text-xs" style="color:#4a5568;">ثغرات حرجة</div>
-      </div>
-
-      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-start justify-between mb-3">
-          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2);">
-            <i data-lucide="alert-triangle" class="w-4 h-4" style="color:#f59e0b;"></i>
-          </div>
-          <span class="badge-high text-xs px-2 py-0.5 rounded font-mono">+8</span>
+        <div class="stat-item px-5 py-3 flex flex-col gap-0.5">
+          <span class="text-xs text-muted">Critical</span>
+          <span id="stat-critical" class="text-xl font-bold font-mono" style="color:#FF3E3E;">0</span>
         </div>
-        <div class="text-2xl font-bold font-mono mb-1" style="color:#f59e0b;" id="stat-high">24</div>
-        <div class="text-xs" style="color:#4a5568;">ثغرات عالية</div>
-      </div>
-
-      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-start justify-between mb-3">
-          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2);">
-            <i data-lucide="alert-circle" class="w-4 h-4" style="color:#fbbf24;"></i>
-          </div>
-          <span class="badge-medium text-xs px-2 py-0.5 rounded font-mono">+12</span>
+        <div class="stat-item px-5 py-3 flex flex-col gap-0.5">
+          <span class="text-xs text-muted">High</span>
+          <span id="stat-high" class="text-xl font-bold font-mono" style="color:#FF6B35;">0</span>
         </div>
-        <div class="text-2xl font-bold font-mono mb-1" style="color:#fbbf24;" id="stat-medium">41</div>
-        <div class="text-xs" style="color:#4a5568;">ثغرات متوسطة</div>
-      </div>
-
-      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-start justify-between mb-3">
-          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(57,255,126,0.08); border:1px solid rgba(57,255,126,0.2);">
-            <i data-lucide="info" class="w-4 h-4" style="color:#39ff7e;"></i>
-          </div>
-          <span class="badge-low text-xs px-2 py-0.5 rounded font-mono">-2</span>
+        <div class="stat-item px-5 py-3 flex flex-col gap-0.5">
+          <span class="text-xs text-muted">Medium</span>
+          <span id="stat-medium" class="text-xl font-bold font-mono" style="color:#FFD166;">0</span>
         </div>
-        <div class="text-2xl font-bold font-mono mb-1" style="color:#39ff7e;" id="stat-low">18</div>
-        <div class="text-xs" style="color:#4a5568;">ثغرات منخفضة</div>
-      </div>
-    </div>
-
-    <!-- Risk score + recent activity -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-
-      <!-- Risk gauge -->
-      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-center gap-2 mb-4">
-          <div class="section-accent h-5"></div>
-          <span class="text-sm font-semibold" style="color:#e2e8f0;">مؤشر المخاطر</span>
-        </div>
-        <div class="flex flex-col items-center">
-          <div class="relative w-32 h-32 mb-3">
-            <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#1a2028" stroke-width="10"/>
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#ff4757" stroke-width="10"
-                stroke-dasharray="314" stroke-dashoffset="94"
-                style="filter:drop-shadow(0 0 6px #ff4757)"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-2xl font-bold font-mono" style="color:#ff4757;">70</span>
-              <span class="text-xs font-mono" style="color:#4a5568;">/100</span>
-            </div>
-          </div>
-          <span class="badge-critical text-xs px-3 py-1 rounded font-mono">HIGH RISK</span>
-        </div>
-      </div>
-
-      <!-- Recent scans -->
-      <div class="lg:col-span-2 rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <div class="section-accent h-5"></div>
-            <span class="text-sm font-semibold" style="color:#e2e8f0;">آخر عمليات الفحص</span>
-          </div>
-          <button class="text-xs font-mono transition-colors" style="color:#00d4c8;"
-            onmouseover="this.style.color='#39ff7e'" onmouseout="this.style.color='#00d4c8'">
-            عرض الكل ←
-          </button>
-        </div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
-            <div class="flex items-center gap-3">
-              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
-              <div>
-                <div class="text-xs font-mono" style="color:#c9d4e0;">auth_module.py</div>
-                <div class="text-xs" style="color:#3a4a5a;">منذ 12 دقيقة</div>
-              </div>
-            </div>
-            <span class="badge-critical text-xs px-2 py-0.5 rounded font-mono">حرجة ×2</span>
-          </div>
-          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
-            <div class="flex items-center gap-3">
-              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
-              <div>
-                <div class="text-xs font-mono" style="color:#c9d4e0;">database.js</div>
-                <div class="text-xs" style="color:#3a4a5a;">منذ 38 دقيقة</div>
-              </div>
-            </div>
-            <span class="badge-high text-xs px-2 py-0.5 rounded font-mono">عالية ×5</span>
-          </div>
-          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
-            <div class="flex items-center gap-3">
-              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
-              <div>
-                <div class="text-xs font-mono" style="color:#c9d4e0;">upload_handler.php</div>
-                <div class="text-xs" style="color:#3a4a5a;">منذ ساعتين</div>
-              </div>
-            </div>
-            <span class="badge-medium text-xs px-2 py-0.5 rounded font-mono">متوسطة ×3</span>
-          </div>
+        <div class="stat-item px-5 py-3 flex flex-col gap-0.5">
+          <span class="text-xs text-muted">Low</span>
+          <span id="stat-low" class="text-xl font-bold font-mono" style="color:#60A5FA;">0</span>
         </div>
       </div>
     </div>
 
-    <!-- Quick action -->
-    <div class="rounded-lg p-5 flex items-center justify-between" style="background:linear-gradient(135deg, rgba(0,212,200,0.05), rgba(57,255,126,0.03)); border:1px solid rgba(0,212,200,0.15);">
-      <div>
-        <div class="text-sm font-semibold mb-1" style="color:#e2e8f0;">ابدأ فحصاً جديداً</div>
-        <div class="text-xs" style="color:#4a5568;">أضف كودك واكتشف الثغرات خلال ثوانٍ</div>
-      </div>
-      <button onclick="switchView('scan')"
-        class="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-semibold font-mono transition-all"
-        style="background:linear-gradient(135deg,#00d4c8,#0ea5a0); color:#080b0e;"
-        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-        <i data-lucide="scan-line" class="w-4 h-4"></i>
-        فحص الآن
-      </button>
-    </div>
-  </div>
+    <!-- Two-column grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-  <!-- ── SCAN VIEW ── -->
-  <div id="view-scan" class="flex-1 p-6 overflow-auto hidden">
-    <div class="max-w-4xl mx-auto">
+      <!-- ═══ LEFT: Code Input Panel ═══ -->
+      <div class="flex flex-col gap-4">
+        <div class="rounded-2xl border border-border p-5 flex flex-col gap-4" style="background:#141720;">
 
-      <!-- Input area -->
-      <div class="rounded-lg mb-5" style="background:#0f1318; border:1px solid #1e2730;">
-
-        <!-- File bar -->
-        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
-          <div class="flex items-center gap-3">
-            <div class="flex gap-1.5">
-              <span class="w-3 h-3 rounded-full" style="background:#ff4757;"></span>
-              <span class="w-3 h-3 rounded-full" style="background:#f59e0b;"></span>
-              <span class="w-3 h-3 rounded-full" style="background:#39ff7e;"></span>
-            </div>
-            <div class="flex items-center gap-2 px-3 py-1 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
-              <i data-lucide="file-code" class="w-3 h-3" style="color:#00d4c8;"></i>
-              <span class="text-xs font-mono" style="color:#4a5568;">target_code</span>
-              <span class="text-xs font-mono px-1.5 py-0.5 rounded" style="background:#1a2028; color:#3a4a5a;">auto</span>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="clearCode()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-colors"
-              style="color:#4a5568; border:1px solid #1a2028;"
-              onmouseover="this.style.color='#ff4757'; this.style.borderColor='rgba(255,71,87,0.3)'"
-              onmouseout="this.style.color='#4a5568'; this.style.borderColor='#1a2028'">
-              <i data-lucide="trash-2" class="w-3 h-3"></i>
-              <span class="hidden sm:inline">مسح</span>
-            </button>
-            <button onclick="loadSample()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-all"
-              style="color:#00d4c8; border:1px solid rgba(0,212,200,0.2); background:rgba(0,212,200,0.05);"
-              onmouseover="this.style.background='rgba(0,212,200,0.1)'"
-              onmouseout="this.style.background='rgba(0,212,200,0.05)'">
-              <i data-lucide="code-2" class="w-3 h-3"></i>
-              <span class="hidden sm:inline">مثال</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Textarea with line numbers -->
-        <div class="relative flex">
-          <div id="line-numbers" class="py-4 px-3 text-right select-none font-mono text-xs leading-[1.7] min-w-[3rem]"
-            style="background:#080b0e; color:#2a3a4a; border-left:1px solid #1a2028;">
-            1
-          </div>
-          <textarea id="code-input"
-            class="code-area flex-1 py-4 px-4 min-h-64 w-full"
-            placeholder="// الصق الكود البرمجي هنا للبدء في الفحص الأمني...
-// يدعم: Python، JavaScript، PHP، Java، C/C++، Ruby، Go"
-            oninput="updateLineNumbers(this)"
-            spellcheck="false"></textarea>
-        </div>
-
-        <!-- Token counter -->
-        <div class="flex items-center justify-between px-4 py-2.5" style="border-top:1px solid #1a2028;">
-          <div class="flex items-center gap-3">
-            <span class="text-xs font-mono" style="color:#2a3a4a;">
-              <span id="char-count">0</span> حرف
-            </span>
-            <span class="text-xs font-mono" style="color:#2a3a4a;">
-              <span id="line-count">0</span> سطر
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <i data-lucide="shield" class="w-3 h-3" style="color:#2a3a4a;"></i>
-            <span class="text-xs font-mono" style="color:#2a3a4a;">تشفير TLS 1.3</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Scan options -->
-      <div class="grid grid-cols-3 gap-3 mb-5">
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all" id="opt-sql"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);"
-          onmouseover="this.style.borderColor='#00d4c8'" onmouseout="this.style.borderColor='rgba(0,212,200,0.2)'">
-          <input type="checkbox" checked class="hidden" id="check-sql">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">SQL Injection</span>
-        </label>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all" id="opt-xss"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
-          <input type="checkbox" checked class="hidden">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">XSS</span>
-        </label>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
-          <input type="checkbox" checked class="hidden">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">Path Traversal</span>
-        </label>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
-          <input type="checkbox" checked class="hidden">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">CSRF</span>
-        </label>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
-          <input type="checkbox" checked class="hidden">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">IDOR</span>
-        </label>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
-          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
-          <input type="checkbox" checked class="hidden">
-          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
-            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
-          </div>
-          <span class="text-xs font-mono" style="color:#c9d4e0;">RCE</span>
-        </label>
-      </div>
-
-      <!-- SCAN BUTTON -->
-      <div class="flex justify-center mb-6">
-        <button id="scan-btn" onclick="startScan()"
-          class="scan-btn flex items-center gap-3 px-10 py-4 rounded-lg font-bold text-base font-mono transition-all"
-          style="background:linear-gradient(135deg,#00d4c8,#0aadaa); color:#080b0e; border:1px solid rgba(0,212,200,0.4);">
-          <i data-lucide="scan-line" class="w-5 h-5"></i>
-          ابدأ الفحص الأمني
-        </button>
-      </div>
-
-      <!-- Progress (hidden by default) -->
-      <div id="progress-area" class="hidden rounded-lg p-5 mb-5" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full" style="background:#00d4c8; box-shadow:0 0 6px #00d4c8; animation:blink 1s step-start infinite;"></div>
-            <span class="text-sm font-mono" style="color:#00d4c8;" id="progress-label">جارٍ تحليل الكود...</span>
-          </div>
-          <span class="text-xs font-mono" style="color:#4a5568;" id="progress-pct">0%</span>
-        </div>
-        <div class="w-full h-1.5 rounded-full mb-3" style="background:#1a2028;">
-          <div id="progress-bar" class="h-full rounded-full progress-shimmer" style="width:0%; transition:width 0.4s ease;"></div>
-        </div>
-        <div id="terminal-output" class="font-mono text-xs space-y-1 max-h-32 overflow-auto" style="color:#3a4a5a;"></div>
-      </div>
-
-      <!-- ── RESULTS PANEL ── -->
-      <div id="results-panel" class="hidden fade-up">
-
-        <!-- Summary bar -->
-        <div class="rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-3"
-          style="background:rgba(57,255,126,0.04); border:1px solid rgba(57,255,126,0.15);">
-          <div class="flex items-center gap-3">
-            <i data-lucide="shield-alert" class="w-5 h-5" style="color:#39ff7e;"></i>
-            <span class="text-sm font-semibold" style="color:#e2e8f0;">اكتمل الفحص — تم العثور على <span id="total-vulns" style="color:#ff4757;">0</span> ثغرة</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="exportResults()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-all"
-              style="color:#00d4c8; border:1px solid rgba(0,212,200,0.2); background:rgba(0,212,200,0.05);"
-              onmouseover="this.style.background='rgba(0,212,200,0.12)'"
-              onmouseout="this.style.background='rgba(0,212,200,0.05)'">
-              <i data-lucide="download" class="w-3 h-3"></i>
-              تصدير PDF
-            </button>
-          </div>
-        </div>
-
-        <!-- Results table -->
-        <div class="rounded-lg overflow-hidden" style="background:#0f1318; border:1px solid #1e2730;">
-          <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
-            <div class="flex items-center gap-2">
-              <div class="section-accent h-5"></div>
-              <span class="text-sm font-semibold" style="color:#e2e8f0;">نتائج التحليل</span>
-            </div>
-            <div class="flex gap-2" id="filter-badges">
-              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn active-filter"
-                data-filter="all" onclick="filterResults('all')"
-                style="background:rgba(0,212,200,0.15); color:#00d4c8; border:1px solid rgba(0,212,200,0.3);">
-                الكل
-              </button>
-              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
-                data-filter="critical" onclick="filterResults('critical')"
-                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
-                حرجة
-              </button>
-              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
-                data-filter="high" onclick="filterResults('high')"
-                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
-                عالية
-              </button>
-              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
-                data-filter="medium" onclick="filterResults('medium')"
-                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
-                متوسطة
-              </button>
-            </div>
-          </div>
-
-          <div id="vuln-list"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── LOGS VIEW ── -->
-  <div id="view-logs" class="flex-1 p-6 overflow-auto hidden">
-    <div class="rounded-lg h-full" style="background:#080b0e; border:1px solid #1e2730;">
-      <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
-        <div class="flex items-center gap-2">
-          <i data-lucide="terminal" class="w-4 h-4" style="color:#00d4c8;"></i>
-          <span class="text-sm font-mono" style="color:#c9d4e0;">سجل العمليات</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 4px #39ff7e;"></span>
-          <span class="text-xs font-mono" style="color:#39ff7e;">LIVE</span>
-        </div>
-      </div>
-      <div class="p-4 font-mono text-xs space-y-1 overflow-auto" style="color:#3a4a5a; max-height: calc(100vh - 180px);">
-        <div><span style="color:#00d4c8;">[INFO]</span>&nbsp;&nbsp;2026-06-10 14:23:01 — محرك الفحص جاهز v2.4.1</div>
-        <div><span style="color:#39ff7e;">[OK]</span>&nbsp;&nbsp;&nbsp;2026-06-10 14:23:01 — قاعدة بيانات الأنماط محدّثة (CVE-2026)</div>
-        <div><span style="color:#f59e0b;">[WARN]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: كلمة مرور مُثبَّتة بالكود في السطر 42</div>
-        <div><span style="color:#ff4757;">[CRIT]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: SQL Injection حرجة — السطر 87</div>
-        <div><span style="color:#ff4757;">[CRIT]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: تجاوز المصادقة — السطر 103</div>
-        <div><span style="color:#00d4c8;">[INFO]</span>&nbsp;&nbsp;2026-06-10 14:08:12 — بدء فحص: database.js</div>
-        <div><span style="color:#f59e0b;">[HIGH]</span>&nbsp;2026-06-10 14:08:19 — database.js: استعلام غير مُعقَّم في السطر 22</div>
-        <div><span style="color:#39ff7e;">[OK]</span>&nbsp;&nbsp;&nbsp;2026-06-10 14:08:20 — database.js: اكتمل الفحص في 8.3 ثانية</div>
-        <div class="mt-2"><span style="color:#00d4c8;">vaultscan@engine:~$</span> <span class="cursor">█</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── SETTINGS VIEW ── -->
-  <div id="view-settings" class="flex-1 p-6 overflow-auto hidden">
-    <div class="max-w-xl space-y-4">
-      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-center gap-2 mb-4">
-          <div class="section-accent h-5"></div>
-          <span class="text-sm font-semibold" style="color:#e2e8f0;">إعدادات المحرك</span>
-        </div>
-        <div class="space-y-4">
-          <div>
-            <label class="text-xs font-mono mb-2 block" style="color:#4a5568;">عنوان سيرفر الفحص</label>
-            <input type="text" value="http://localhost:5000/scan"
-              class="w-full px-3 py-2 rounded text-sm font-mono"
-              style="background:#080b0e; border:1px solid #1e2730; color:#c9d4e0; outline:none;"
-              onfocus="this.style.borderColor='#00d4c8'" onblur="this.style.borderColor='#1e2730'">
-          </div>
-          <div>
-            <label class="text-xs font-mono mb-2 block" style="color:#4a5568;">مستوى التحليل</label>
-            <select class="w-full px-3 py-2 rounded text-sm font-mono"
-              style="background:#080b0e; border:1px solid #1e2730; color:#c9d4e0; outline:none;">
-              <option>عميق (Deep Analysis)</option>
-              <option>سريع (Quick Scan)</option>
-              <option>مخصص (Custom)</option>
-            </select>
-          </div>
+          <!-- Panel header -->
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono" style="color:#4a5568;">تصدير التقارير تلقائياً</span>
-            <div class="w-10 h-5 rounded-full cursor-pointer relative" id="toggle-export"
-              style="background:rgba(0,212,200,0.3); border:1px solid rgba(0,212,200,0.4);"
-              onclick="this.style.background='rgba(0,212,200,0.5)'">
-              <div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full" style="background:#00d4c8;"></div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="code-2" class="w-4 h-4 text-cyber"></i>
+              <span class="font-semibold text-sm">Code Input</span>
             </div>
+            <div class="flex items-center gap-2">
+              <!-- Language selector -->
+              <select id="lang-select" class="text-xs px-2.5 py-1.5 rounded-lg border border-border text-muted cursor-pointer hover:border-cyber transition-colors" style="background:#1A1D26;">
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="php">PHP</option>
+                <option value="java">Java</option>
+                <option value="sql">SQL</option>
+                <option value="auto">Auto-detect</option>
+              </select>
+              <button id="clear-btn" class="text-xs px-2.5 py-1.5 rounded-lg border border-border text-muted hover:text-danger hover:border-danger transition-colors flex items-center gap-1">
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Textarea wrapper with scan overlay -->
+          <div class="relative flex-1" id="textarea-wrapper">
+            <textarea
+              id="code-input"
+              class="code-input w-full rounded-xl p-4 min-h-72"
+              placeholder="# Paste your code here for vulnerability analysis...
+# Supports Python, JavaScript, PHP, Java, SQL, and more.
+
+def login(username, password):
+    query = 'SELECT * FROM users WHERE user=\'' + username + '\''
+    result = db.execute(query)
+    ..."
+            ></textarea>
+            <div class="scan-overlay hidden" id="scan-overlay"></div>
+          </div>
+
+          <!-- Scan options row -->
+          <div class="flex flex-wrap gap-2 items-center">
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input type="checkbox" checked class="accent-cyber w-3 h-3" id="chk-sqli"> SQL Injection
+            </label>
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input type="checkbox" checked class="accent-cyber w-3 h-3" id="chk-xss"> XSS
+            </label>
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input type="checkbox" checked class="accent-cyber w-3 h-3" id="chk-auth"> Auth Issues
+            </label>
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input type="checkbox" checked class="accent-cyber w-3 h-3" id="chk-crypto"> Crypto Flaws
+            </label>
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input type="checkbox" checked class="accent-cyber w-3 h-3" id="chk-idor"> IDOR
+            </label>
+          </div>
+
+          <!-- Scan button -->
+          <button id="scan-btn" class="scan-btn w-full py-3.5 rounded-xl text-sm flex items-center justify-center gap-2.5">
+            <i data-lucide="scan" class="w-4 h-4" id="scan-icon"></i>
+            <span id="scan-label">Scan for Vulnerabilities</span>
+            <div id="scan-dots" class="hidden flex gap-1 ml-1">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+          </button>
+
+        </div>
+
+        <!-- Doughnut chart (visible after results) -->
+        <div id="chart-card" class="hidden rounded-2xl border border-border p-5 fade-in" style="background:#141720;">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-cyber"></i>
+              <span class="font-semibold text-sm">Severity Distribution</span>
+            </div>
+            <span class="text-xs text-muted">Scan complete</span>
+          </div>
+          <div class="flex items-center gap-6">
+            <div class="relative w-36 h-36 flex-shrink-0">
+              <canvas id="severity-chart"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span id="chart-total" class="text-2xl font-bold font-mono text-text">0</span>
+                <span class="text-xs text-muted">total</span>
+              </div>
+            </div>
+            <div id="chart-legend" class="flex flex-col gap-2 text-xs flex-1"></div>
           </div>
         </div>
       </div>
-      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
-        <div class="flex items-center gap-2 mb-4">
-          <div class="section-accent h-5"></div>
-          <span class="text-sm font-semibold" style="color:#e2e8f0;">حول VaultScan</span>
+
+      <!-- ═══ RIGHT: Results Panel ═══ -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Results header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-warn"></i>
+            <span class="font-semibold text-sm">Findings & Remediation</span>
+          </div>
+          <div class="flex items-center gap-2" id="filter-row">
+            <!-- severity filter buttons injected here -->
+          </div>
         </div>
-        <div class="space-y-2 font-mono text-xs" style="color:#4a5568;">
-          <div class="flex justify-between"><span>الإصدار</span><span style="color:#00d4c8;">v2.4.1 Enterprise</span></div>
-          <div class="flex justify-between"><span>قاعدة CVE</span><span style="color:#39ff7e;">محدَّثة (يونيو 2026)</span></div>
-          <div class="flex justify-between"><span>المحرك</span><span style="color:#c9d4e0;">VaultEngine™ 3.0</span></div>
+
+        <!-- Results area -->
+        <div id="results-panel" class="flex flex-col gap-3 pr-1">
+
+          <!-- Empty state -->
+          <div id="empty-state" class="empty-glow rounded-2xl border border-border p-10 flex flex-col items-center justify-center text-center gap-4" style="background:#141720; min-height: 320px;">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#1A1D26; border: 1px dashed #252837;">
+              <i data-lucide="shield" class="w-8 h-8 text-border"></i>
+            </div>
+            <div>
+              <p class="font-medium text-text mb-1">No vulnerabilities found yet</p>
+              <p class="text-sm text-muted max-w-xs">Paste your code in the left panel and click <em>Scan</em> to begin analysis. Results will appear here.</p>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
-</main>
-
-<!-- ═══════════════════════  SCRIPTS  ═══════════════════════ -->
-<script>
-// ─── Init Lucide ───────────────────────────────────────────
-lucide.createIcons();
-
-// ─── Clock ─────────────────────────────────────────────────
-function updateClock() {
-  const now = new Date();
-  document.getElementById('live-clock').textContent =
-    now.toLocaleTimeString('ar-SA', { hour12: false });
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ─── Navigation ────────────────────────────────────────────
-const views = ['dashboard', 'scan', 'logs', 'settings'];
-const titles = {
-  dashboard: ['لوحة التحكم', 'نظرة عامة على حالة الأمان'],
-  scan:      ['فحص الكود', 'حلّل كودك بحثاً عن الثغرات'],
-  logs:      ['السجلات', 'سجل عمليات المحرك في الوقت الفعلي'],
-  settings:  ['الإعدادات', 'تخصيص إعدادات الفحص والمحرك'],
-};
-
-function switchView(name) {
-  views.forEach(v => {
-    document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
-    const btn = document.getElementById('nav-' + v);
-    if (v === name) {
-      btn.classList.add('nav-active');
-      btn.classList.remove('nav-item');
-      btn.style.color = '';
-    } else {
-      btn.classList.remove('nav-active');
-      btn.classList.add('nav-item');
-      btn.style.color = '#4a5568';
-    }
-  });
-  document.getElementById('page-title').textContent = titles[name][0];
-  document.getElementById('page-subtitle').textContent = titles[name][1];
-  lucide.createIcons();
-}
-
-// ─── Code input helpers ────────────────────────────────────
-function updateLineNumbers(ta) {
-  const lines = ta.value.split('\n').length;
-  document.getElementById('line-numbers').textContent =
-    Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-  document.getElementById('char-count').textContent = ta.value.length;
-  document.getElementById('line-count').textContent = lines;
-}
-
-function clearCode() {
-  const ta = document.getElementById('code-input');
-  ta.value = '';
-  updateLineNumbers(ta);
-  document.getElementById('results-panel').classList.add('hidden');
-  document.getElementById('progress-area').classList.add('hidden');
-}
-
-function loadSample() {
-  const sample = `# مثال: كود Python يحتوي على ثغرات أمنية متعددة
-
-import sqlite3
-import os
-
-PASSWORD = "admin123"  # كلمة مرور ثابتة في الكود
-
-def get_user(username):
-    conn = sqlite3.connect('users.db')
-    # ثغرة SQL Injection: مدخل المستخدم غير مُعقَّم
-    query = "SELECT * FROM users WHERE username = '" + username + "'"
-    return conn.execute(query).fetchone()
-
-def read_file(filename):
-    # ثغرة Path Traversal: لا يوجد تحقق من المسار
-    base_path = "/var/www/uploads/"
-    return open(base_path + filename).read()
-
-def execute_command(user_input):
-    # ثغرة RCE: تنفيذ أوامر نظام مباشرة
-    os.system("process_data " + user_input)
-`;
-  document.getElementById('code-input').value = sample;
-  updateLineNumbers(document.getElementById('code-input'));
-}
-
-// ─── Scan logic ─────────────────────────────────────────────
-const terminalMessages = [
-  '→ تحليل بنية الكود...',
-  '→ مطابقة أنماط OWASP Top 10...',
-  '→ فحص استخدام المتغيرات والدوال...',
-  '→ تحليل تدفق البيانات (Taint Analysis)...',
-  '→ البحث عن بيانات حساسة مُضمَّنة...',
-  '→ مراجعة ثغرات SQL/NoSQL Injection...',
-  '→ فحص ثغرات XSS و CSRF...',
-  '→ اكتمل التحليل. جارٍ إعداد التقرير...',
-];
-
-function startScan() {
-  const code = document.getElementById('code-input').value.trim();
-  if (!code) {
-    shakeBtn();
-    return;
-  }
-
-  // Reset
-  document.getElementById('results-panel').classList.add('hidden');
-  const progressArea = document.getElementById('progress-area');
-  progressArea.classList.remove('hidden');
-
-  const bar  = document.getElementById('progress-bar');
-  const pct  = document.getElementById('progress-pct');
-  const lbl  = document.getElementById('progress-label');
-  const term = document.getElementById('terminal-output');
-  const btn  = document.getElementById('scan-btn');
-
-  term.innerHTML = '';
-  bar.style.width = '0%';
-  btn.disabled = true;
-  btn.style.opacity = '0.6';
-  btn.style.cursor = 'not-allowed';
-  btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> جارٍ الفحص...';
-  lucide.createIcons();
-
-  let step = 0;
-  const steps = terminalMessages.length;
-
-  const interval = setInterval(() => {
-    if (step >= steps) {
-      clearInterval(interval);
-      sendToServer(code);
-      return;
-    }
-    const progress = Math.round(((step + 1) / steps) * 85);
-    bar.style.width = progress + '%';
-    pct.textContent = progress + '%';
-    lbl.textContent = terminalMessages[step];
-
-    const line = document.createElement('div');
-    line.style.color = step < steps - 1 ? '#2a4a3a' : '#39ff7e';
-    line.textContent = terminalMessages[step];
-    term.appendChild(line);
-    term.scrollTop = term.scrollHeight;
-
-    step++;
-  }, 380);
-}
-
-function sendToServer(code) {
-  fetch('/scan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  })
-  .then(res => res.ok ? res.json() : Promise.reject(res))
-  .then(data => renderResults(data))
-  .catch(() => {
-    // Demo fallback: generate mock results
-    renderResults(getMockResults(code));
-  });
-}
-
-// ─── Mock results (fallback) ───────────────────────────────
-function getMockResults(code) {
-  const findings = [];
-  if (/password\s*=\s*['"]/i.test(code) || /PASSWORD\s*=/i.test(code))
-    findings.push({ severity:'critical', type:'Hardcoded Credentials', line: code.split('\n').findIndex(l => /password/i.test(l)) + 1, desc:'كلمة مرور مُثبَّتة مباشرة في الكود — خطر تسريب بيانات اعتماد.', cvss:'9.8', cwe:'CWE-798' });
-  if (/SELECT|INSERT|UPDATE|DELETE/i.test(code) && /\+\s*\w+/i.test(code))
-    findings.push({ severity:'critical', type:'SQL Injection', line: code.split('\n').findIndex(l => /SELECT|INSERT/i.test(l)) + 1, desc:'مدخل مستخدم يُدمج مباشرة في استعلام SQL دون تعقيم (sanitization).', cvss:'9.1', cwe:'CWE-89' });
-  if (/os\.system\s*\(/i.test(code) || /exec\s*\(/i.test(code))
-    findings.push({ severity:'critical', type:'Remote Code Execution', line: code.split('\n').findIndex(l => /os\.system|exec\s*\(/.test(l)) + 1, desc:'تنفيذ أوامر نظام مباشرة باستخدام مدخلات غير موثوقة.', cvss:'10.0', cwe:'CWE-78' });
-  if (/base_path\s*\+|path\s*\+/i.test(code))
-    findings.push({ severity:'high', type:'Path Traversal', line: code.split('\n').findIndex(l => /base_path/.test(l)) + 1, desc:'مسار الملف يُبنى من مدخل المستخدم مما يُتيح الوصول لملفات النظام.', cvss:'7.5', cwe:'CWE-22' });
-  if (findings.length === 0)
-    findings.push({ severity:'low', type:'Missing Input Validation', line: 1, desc:'لم يُكتشف تحقق صريح من المدخلات في بعض الدوال.', cvss:'3.1', cwe:'CWE-20' });
-  return { vulnerabilities: findings };
-}
-
-// ─── Render results ────────────────────────────────────────
-let allVulns = [];
-
-function renderResults(data) {
-  const bar  = document.getElementById('progress-bar');
-  const pct  = document.getElementById('progress-pct');
-  const lbl  = document.getElementById('progress-label');
-  const btn  = document.getElementById('scan-btn');
-  const term = document.getElementById('terminal-output');
-
-  bar.style.width = '100%';
-  pct.textContent = '100%';
-  lbl.textContent = '✓ اكتمل الفحص بنجاح';
-
-  const done = document.createElement('div');
-  done.style.color = '#39ff7e';
-  done.textContent = '✓ تم الانتهاء — التقرير جاهز.';
-  term.appendChild(done);
-
-  btn.disabled = false;
-  btn.style.opacity = '1';
-  btn.style.cursor = '';
-  btn.innerHTML = '<i data-lucide="scan-line" class="w-5 h-5"></i> ابدأ الفحص الأمني';
-  lucide.createIcons();
-
-  setTimeout(() => {
-    allVulns = data.vulnerabilities || [];
-    document.getElementById('total-vulns').textContent = allVulns.length;
-    document.getElementById('results-panel').classList.remove('hidden');
-    renderVulnList(allVulns);
-
-    // Update dashboard stats
-    const c = allVulns.filter(v => v.severity === 'critical').length;
-    const h = allVulns.filter(v => v.severity === 'high').length;
-    const m = allVulns.filter(v => v.severity === 'medium').length;
-    const l = allVulns.filter(v => ['low','info'].includes(v.severity)).length;
-    document.getElementById('stat-critical').textContent = String(c).padStart(2,'0');
-    document.getElementById('stat-high').textContent     = String(h).padStart(2,'0');
-    document.getElementById('stat-medium').textContent   = String(m).padStart(2,'0');
-    document.getElementById('stat-low').textContent      = String(l).padStart(2,'0');
-  }, 600);
-}
-
-const severityConfig = {
-  critical: { label:'حرجة',   cls:'badge-critical', icon:'skull' },
-  high:     { label:'عالية',   cls:'badge-high',     icon:'alert-triangle' },
-  medium:   { label:'متوسطة', cls:'badge-medium',    icon:'alert-circle' },
-  low:      { label:'منخفضة', cls:'badge-low',       icon:'info' },
-  info:     { label:'معلومة', cls:'badge-info',      icon:'info' },
-};
-
-function renderVulnList(vulns) {
-  const container = document.getElementById('vuln-list');
-  if (vulns.length === 0) {
-    container.innerHTML = `
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        <i data-lucide="shield-check" class="w-12 h-12 mb-3" style="color:#39ff7e;"></i>
-        <div class="text-sm font-semibold mb-1" style="color:#e2e8f0;">لم تُكتشف ثغرات</div>
-        <div class="text-xs" style="color:#4a5568;">الكود نظيف وفق الفحص الحالي</div>
-      </div>`;
+  <!-- ══════════════ SCRIPTS ══════════════ -->
+  <script>
+    // ── Init Lucide ──────────────────────────────────────────────
     lucide.createIcons();
-    return;
-  }
 
-  container.innerHTML = vulns.map((v, i) => {
-    const cfg = severityConfig[v.severity] || severityConfig['info'];
-    return `
-    <div class="vuln-row px-4 py-3.5 fade-up" style="animation-delay:${i * 60}ms;" onclick="toggleDetail(${i})">
-      <div class="flex items-start gap-3">
-        <div class="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center mt-0.5"
-          style="background:rgba(0,0,0,0.3); border:1px solid #1e2730;">
-          <i data-lucide="${cfg.icon}" class="w-3.5 h-3.5"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex flex-wrap items-center gap-2 mb-1">
-            <span class="text-sm font-semibold font-mono" style="color:#e2e8f0;">${v.type}</span>
-            <span class="${cfg.cls} text-xs px-2 py-0.5 rounded font-mono">${cfg.label}</span>
-            <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:#1a2028; color:#4a5568;">CVSS ${v.cvss}</span>
-            <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:#1a2028; color:#4a5568;">${v.cwe}</span>
+    // ── State ────────────────────────────────────────────────────
+    let chartInstance = null;
+    let activeFilter  = 'all';
+    let lastResults   = [];
+
+    // ── DOM refs ─────────────────────────────────────────────────
+    const scanBtn       = document.getElementById('scan-btn');
+    const scanLabel     = document.getElementById('scan-label');
+    const scanDots      = document.getElementById('scan-dots');
+    const scanIcon      = document.getElementById('scan-icon');
+    const scanOverlay   = document.getElementById('scan-overlay');
+    const codeInput     = document.getElementById('code-input');
+    const resultsPanel  = document.getElementById('results-panel');
+    const emptyState    = document.getElementById('empty-state');
+    const statsBar      = document.getElementById('stats-bar');
+    const chartCard     = document.getElementById('chart-card');
+    const clearBtn      = document.getElementById('clear-btn');
+    const filterRow     = document.getElementById('filter-row');
+
+    // ── Severity config ──────────────────────────────────────────
+    const severityConfig = {
+      critical: { label: 'Critical', color: '#FF3E3E', bg: 'rgba(255,62,62,0.08)',  cls: 'badge-critical' },
+      high:     { label: 'High',     color: '#FF6B35', bg: 'rgba(255,107,53,0.08)', cls: 'badge-high'     },
+      medium:   { label: 'Medium',   color: '#FFD166', bg: 'rgba(255,209,102,0.08)',cls: 'badge-medium'   },
+      low:      { label: 'Low',      color: '#60A5FA', bg: 'rgba(96,165,250,0.08)', cls: 'badge-low'      },
+    };
+
+    // ── Clear button ─────────────────────────────────────────────
+    clearBtn.addEventListener('click', () => {
+      codeInput.value = '';
+      codeInput.focus();
+    });
+
+    // ── Scan button ──────────────────────────────────────────────
+    scanBtn.addEventListener('click', async () => {
+      const code = codeInput.value.trim();
+      if (!code) {
+        codeInput.focus();
+        codeInput.style.borderColor = '#FF3E3E';
+        setTimeout(() => codeInput.style.borderColor = '#252837', 1500);
+        return;
+      }
+
+      // UI → loading state
+      setLoading(true);
+
+      try {
+        // ── Flask endpoint ──────────────────────────────────────
+        // Replace '/api/scan' with your actual Flask route.
+        // The response must be JSON with this shape:
+        // { vulnerabilities: [ { title, severity, description, fix_code, fix_explanation, line? } ] }
+        const resp = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code:     code,
+            language: document.getElementById('lang-select').value,
+            checks: {
+              sqli:   document.getElementById('chk-sqli').checked,
+              xss:    document.getElementById('chk-xss').checked,
+              auth:   document.getElementById('chk-auth').checked,
+              crypto: document.getElementById('chk-crypto').checked,
+              idor:   document.getElementById('chk-idor').checked,
+            }
+          })
+        });
+
+        if (!resp.ok) throw new Error('Server error ' + resp.status);
+        const data = await resp.json();
+        renderResults(data.vulnerabilities || []);
+
+      } catch (err) {
+        // ── Demo fallback (remove in production) ─────────────────
+        console.warn('Flask not available, rendering demo data:', err.message);
+        renderResults(getDemoData());
+      }
+
+      setLoading(false);
+    });
+
+    // ── setLoading ───────────────────────────────────────────────
+    function setLoading(on) {
+      if (on) {
+        scanBtn.disabled = true;
+        scanBtn.classList.add('scanning');
+        scanLabel.classList.add('hidden');
+        scanDots.classList.remove('hidden');
+        scanOverlay.classList.remove('hidden');
+        scanIcon.classList.add('hidden');
+      } else {
+        scanBtn.disabled = false;
+        scanBtn.classList.remove('scanning');
+        scanLabel.classList.remove('hidden');
+        scanDots.classList.add('hidden');
+        scanOverlay.classList.add('hidden');
+        scanIcon.classList.remove('hidden');
+      }
+    }
+
+    // ── renderResults ────────────────────────────────────────────
+    function renderResults(vulns) {
+      lastResults = vulns;
+      activeFilter = 'all';
+
+      // Counts
+      const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+      vulns.forEach(v => { if (counts[v.severity] !== undefined) counts[v.severity]++; });
+      const total = vulns.length;
+
+      // Stats bar
+      statsBar.classList.remove('hidden');
+      document.getElementById('stat-total').textContent    = total;
+      document.getElementById('stat-critical').textContent = counts.critical;
+      document.getElementById('stat-high').textContent     = counts.high;
+      document.getElementById('stat-medium').textContent   = counts.medium;
+      document.getElementById('stat-low').textContent      = counts.low;
+
+      // Chart
+      renderChart(counts, total);
+
+      // Filter buttons
+      renderFilterButtons(counts);
+
+      // Cards
+      renderCards(vulns);
+    }
+
+    // ── renderCards ──────────────────────────────────────────────
+    function renderCards(vulns) {
+      // Remove old cards, keep empty state hidden
+      const old = resultsPanel.querySelectorAll('.vuln-card-wrap');
+      old.forEach(el => el.remove());
+
+      if (vulns.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      const filtered = activeFilter === 'all' ? vulns : vulns.filter(v => v.severity === activeFilter);
+
+      if (filtered.length === 0) {
+        const msg = document.createElement('div');
+        msg.className = 'vuln-card-wrap text-center py-8 text-sm text-muted';
+        msg.textContent = 'No ' + activeFilter + ' severity findings.';
+        resultsPanel.appendChild(msg);
+        return;
+      }
+
+      filtered.forEach((v, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'vuln-card-wrap fade-in fade-in-delay-' + Math.min(i + 1, 5);
+        wrap.innerHTML = buildCard(v, i);
+        resultsPanel.appendChild(wrap);
+      });
+
+      lucide.createIcons();
+
+      // Attach collapse toggles
+      document.querySelectorAll('.fix-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.target;
+          const body = document.getElementById(id);
+          const icon = btn.querySelector('.toggle-icon');
+          if (body.classList.contains('collapsed')) {
+            body.classList.replace('collapsed', 'expanded');
+            icon.style.transform = 'rotate(180deg)';
+          } else {
+            body.classList.replace('expanded', 'collapsed');
+            icon.style.transform = 'rotate(0deg)';
+          }
+        });
+      });
+
+      // Copy buttons
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.nextElementSibling.textContent;
+          navigator.clipboard.writeText(code).then(() => {
+            btn.textContent = 'Copied!';
+            btn.style.color = '#00FF87';
+            setTimeout(() => {
+              btn.textContent = 'Copy';
+              btn.style.color = '';
+            }, 1500);
+          });
+        });
+      });
+    }
+
+    // ── buildCard ────────────────────────────────────────────────
+    function buildCard(v, idx) {
+      const sev  = severityConfig[v.severity] || severityConfig.low;
+      const fixId = 'fix-body-' + idx;
+      return `
+        <div class="vuln-card ${v.severity} rounded-xl border border-border p-4 flex flex-col gap-3" style="background:#141720;">
+          <!-- Card header -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+              <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center" style="background:${sev.bg};">
+                <i data-lucide="bug" class="w-4 h-4" style="color:${sev.color};"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="font-semibold text-sm text-text leading-snug truncate">${escHtml(v.title)}</p>
+                ${v.line ? '<p class="text-xs text-muted font-mono">Line ' + v.line + '</p>' : ''}
+              </div>
+            </div>
+            <span class="flex-shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold ${sev.cls}">${sev.label}</span>
           </div>
-          <div class="text-xs mb-1" style="color:#4a5568;">${v.desc}</div>
-          <div class="text-xs font-mono" style="color:#2a4a3a;">→ السطر ${v.line}</div>
+
+          <!-- Description -->
+          <p class="text-xs text-muted leading-relaxed">${escHtml(v.description)}</p>
+
+          <!-- Remediation section -->
+          <div class="rounded-xl border border-border overflow-hidden" style="background:#0D0F14;">
+            <!-- Toggle header -->
+            <button class="fix-toggle w-full px-4 py-2.5 flex items-center justify-between text-left" data-target="${fixId}">
+              <div class="flex items-center gap-2">
+                <i data-lucide="wrench" class="w-3.5 h-3.5 text-cyber"></i>
+                <span class="text-xs font-semibold text-cyber">Remediation</span>
+              </div>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-muted toggle-icon transition-transform" style="transition: transform 0.3s;"></i>
+            </button>
+
+            <!-- Fix body -->
+            <div class="fix-body expanded" id="${fixId}">
+              <div class="px-4 pb-4 flex flex-col gap-3 border-t border-border" style="border-color:#252837;">
+                <!-- Explanation -->
+                <p class="text-xs text-muted pt-3 leading-relaxed">${escHtml(v.fix_explanation)}</p>
+                <!-- Fixed code -->
+                <div class="relative">
+                  <button class="copy-btn">Copy</button>
+                  <pre class="code-block pt-8">${escHtml(v.fix_code)}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <i data-lucide="chevron-down" class="w-4 h-4 flex-shrink-0 mt-1" style="color:#2a3a4a;" id="chevron-${i}"></i>
-      </div>
-      <div id="detail-${i}" class="hidden mt-3 mr-11">
-        <div class="rounded p-3 text-xs font-mono" style="background:#080b0e; border:1px solid #1a2028; color:#4a5568;">
-          <div style="color:#00d4c8;" class="mb-1"># التوصية</div>
-          <div>يُنصح بمراجعة السطر ${v.line} وتطبيق مبدأ "Never trust user input".</div>
-          <div class="mt-1">استخدم Prepared Statements أو المكتبات الموثوقة للتحقق من المدخلات.</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-  lucide.createIcons();
-}
+      `;
+    }
 
-function toggleDetail(i) {
-  const d = document.getElementById('detail-' + i);
-  const c = document.getElementById('chevron-' + i);
-  const open = !d.classList.contains('hidden');
-  d.classList.toggle('hidden', open);
-  c.style.transform = open ? '' : 'rotate(180deg)';
-}
+    // ── renderChart ──────────────────────────────────────────────
+    function renderChart(counts, total) {
+      chartCard.classList.remove('hidden');
+      document.getElementById('chart-total').textContent = total;
 
-function filterResults(type) {
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    const active = b.dataset.filter === type;
-    b.style.background = active ? 'rgba(0,212,200,0.15)' : 'transparent';
-    b.style.color = active ? '#00d4c8' : '#4a5568';
-    b.style.borderColor = active ? 'rgba(0,212,200,0.3)' : '#1e2730';
-  });
-  const filtered = type === 'all' ? allVulns : allVulns.filter(v => v.severity === type);
-  renderVulnList(filtered);
-}
+      const ctx = document.getElementById('severity-chart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
 
-function exportResults() {
-  const data = JSON.stringify({ scan_date: new Date().toISOString(), vulnerabilities: allVulns }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'vaultscan_report_' + Date.now() + '.json';
-  a.click();
-}
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Critical', 'High', 'Medium', 'Low'],
+          datasets: [{
+            data: [counts.critical, counts.high, counts.medium, counts.low],
+            backgroundColor: ['rgba(255,62,62,0.85)', 'rgba(255,107,53,0.85)', 'rgba(255,209,102,0.85)', 'rgba(96,165,250,0.85)'],
+            borderColor: '#0D0F14',
+            borderWidth: 3,
+            hoverOffset: 5,
+          }]
+        },
+        options: {
+          cutout: '72%',
+          plugins: { legend: { display: false }, tooltip: {
+            backgroundColor: '#1A1D26',
+            borderColor: '#252837',
+            borderWidth: 1,
+            titleColor: '#E2E8F0',
+            bodyColor: '#9CA3AF',
+            padding: 10,
+          }},
+          animation: { animateRotate: true, duration: 800, easing: 'easeOutQuart' },
+        }
+      });
 
-function shakeBtn() {
-  const btn = document.getElementById('scan-btn');
-  btn.style.animation = 'none';
-  btn.style.transform = 'translateX(-6px)';
-  setTimeout(() => { btn.style.transform = 'translateX(6px)'; }, 80);
-  setTimeout(() => { btn.style.transform = 'translateX(-4px)'; }, 160);
-  setTimeout(() => { btn.style.transform = ''; btn.style.animation = ''; }, 240);
-}
+      // Legend
+      const legend = document.getElementById('chart-legend');
+      legend.innerHTML = Object.entries(counts).map(([key, val]) => {
+        const s = severityConfig[key];
+        const pct = total ? Math.round(val / total * 100) : 0;
+        return `
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${s.color};"></span>
+              <span class="text-muted">${s.label}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-semibold text-text">${val}</span>
+              <span class="text-muted w-8 text-right">${pct}%</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
 
-// ─── Initial icons pass ────────────────────────────────────
-window.addEventListener('load', () => { lucide.createIcons(); });
-</script>
+    // ── renderFilterButtons ──────────────────────────────────────
+    function renderFilterButtons(counts) {
+      filterRow.innerHTML = '';
+      const allBtn = buildFilterBtn('all', 'All', lastResults.length, true);
+      filterRow.appendChild(allBtn);
+      ['critical','high','medium','low'].forEach(sev => {
+        filterRow.appendChild(buildFilterBtn(sev, severityConfig[sev].label, counts[sev]));
+      });
+    }
+
+    function buildFilterBtn(sev, label, count, active = false) {
+      const btn = document.createElement('button');
+      btn.className = 'text-xs px-2.5 py-1 rounded-lg transition-colors border ' +
+        (active ? 'border-cyber text-cyber' : 'border-border text-muted hover:text-text hover:border-border');
+      btn.style.background = active ? 'rgba(0,255,135,0.08)' : '#1A1D26';
+      btn.dataset.filter = sev;
+      btn.textContent = label + ' (' + count + ')';
+      btn.addEventListener('click', () => {
+        activeFilter = sev;
+        document.querySelectorAll('#filter-row button').forEach(b => {
+          const isActive = b.dataset.filter === sev;
+          b.className = 'text-xs px-2.5 py-1 rounded-lg transition-colors border ' +
+            (isActive ? 'border-cyber text-cyber' : 'border-border text-muted hover:text-text');
+          b.style.background = isActive ? 'rgba(0,255,135,0.08)' : '#1A1D26';
+        });
+        renderCards(lastResults);
+      });
+      return btn;
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+
+    // ── Demo data (remove in production) ────────────────────────
+    function getDemoData() {
+      return [
+        {
+          title: 'SQL Injection via String Concatenation',
+          severity: 'critical',
+          line: 3,
+          description: 'User-supplied input is concatenated directly into a SQL query without sanitization. An attacker can manipulate the query to bypass authentication, extract data, or destroy the database.',
+          fix_explanation: 'Use parameterized queries (prepared statements) instead of string concatenation. Never embed raw user input into SQL strings.',
+          fix_code: `def login(username, password):\n    query = "SELECT * FROM users WHERE user = ? AND pass = ?"\n    result = db.execute(query, (username, password))\n    return result.fetchone()`,
+        },
+        {
+          title: 'Hardcoded Secret Key',
+          severity: 'critical',
+          line: 8,
+          description: 'A cryptographic secret key is hardcoded in source code. This will be exposed in version control history and can never be safely rotated without a code change.',
+          fix_explanation: 'Load secrets from environment variables or a secrets manager (e.g. AWS Secrets Manager, HashiCorp Vault). Never commit credentials to source code.',
+          fix_code: `import os\n\napp.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')\nif not app.config['SECRET_KEY']:\n    raise RuntimeError("SECRET_KEY environment variable is not set")`,
+        },
+        {
+          title: 'Reflected XSS in Template Rendering',
+          severity: 'high',
+          line: 14,
+          description: 'User-controlled data is rendered directly into the HTML response without escaping. This allows an attacker to inject arbitrary JavaScript that executes in the victim\'s browser.',
+          fix_explanation: 'Always escape user input before inserting it into HTML. Use your framework\'s safe templating (e.g., Jinja2\'s auto-escaping or the `|e` filter). Never use `Markup()` on untrusted input.',
+          fix_code: `<!-- Jinja2: auto-escape is enabled by default -->\n<p>Hello, {{ username }}</p>\n\n<!-- Explicit escape if needed -->\n<p>Hello, {{ username | e }}</p>`,
+        },
+        {
+          title: 'Insecure Password Hashing (MD5)',
+          severity: 'high',
+          line: 21,
+          description: 'Passwords are hashed with MD5, which is a fast cryptographic hash not designed for passwords. MD5 hashes can be cracked in milliseconds with modern hardware using rainbow tables or brute force.',
+          fix_explanation: 'Use a slow, memory-hard password hashing algorithm such as bcrypt, scrypt, or Argon2id. Python\'s `bcrypt` or `passlib` libraries make this straightforward.',
+          fix_code: `import bcrypt\n\ndef hash_password(plain: str) -> bytes:\n    salt = bcrypt.gensalt(rounds=12)\n    return bcrypt.hashpw(plain.encode('utf-8'), salt)\n\ndef verify_password(plain: str, hashed: bytes) -> bool:\n    return bcrypt.checkpw(plain.encode('utf-8'), hashed)`,
+        },
+        {
+          title: 'Missing Authorization Check (IDOR)',
+          severity: 'medium',
+          line: 35,
+          description: 'The endpoint fetches a resource by ID from the URL without verifying that the currently authenticated user is authorized to access it. Any user can access any other user\'s data by changing the ID.',
+          fix_explanation: 'Always verify that the requested resource belongs to the authenticated user (or that the user has an appropriate role) before returning it.',
+          fix_code: `@app.route('/api/document/<int:doc_id>')\n@login_required\ndef get_document(doc_id):\n    doc = Document.query.get_or_404(doc_id)\n    if doc.owner_id != current_user.id:\n        abort(403)  # Forbidden\n    return jsonify(doc.to_dict())`,
+        },
+        {
+          title: 'Verbose Error Messages Exposed',
+          severity: 'low',
+          line: 42,
+          description: 'Unhandled exceptions are returned to the client with full stack traces. This exposes internal file paths, library versions, and logic details that help attackers map the application.',
+          fix_explanation: 'Catch exceptions globally and return generic error messages to clients. Log full details server-side only.',
+          fix_code: `@app.errorhandler(Exception)\ndef handle_error(e):\n    app.logger.exception("Unhandled exception: %s", e)\n    return jsonify({"error": "An internal error occurred."}), 500`,
+        },
+      ];
+    }
+  </script>
 </body>
 </html>
+```
