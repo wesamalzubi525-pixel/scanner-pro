@@ -1,35 +1,574 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>SecureCode Pro Scanner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-white p-8">
-    <h1 class="text-3xl font-bold mb-6 text-center">🛡️ SecureCode Pro</h1>
-    <div class="max-w-2xl mx-auto">
-        <textarea id="code" class="w-full h-64 p-4 bg-gray-800 rounded border border-gray-700" placeholder="ضع الكود هنا..."></textarea>
-        <select id="lang" class="w-full p-2 mt-2 bg-gray-800 rounded">
-            <option value="python">Python</option>
-            <option value="javascript">JavaScript</option>
-            <option value="php">PHP</option>
-        </select>
-        <button onclick="scanCode()" class="w-full mt-4 bg-blue-600 p-3 rounded font-bold">فحص الكود (Scan)</button>
-        <div id="result" class="mt-6"></div>
-    </div>
+import { useState } from "react";
+import {
+  Shield, LayoutDashboard, Code2, AlertTriangle, FileSearch,
+  Settings, ChevronLeft, ChevronRight, Bell, Search, TrendingUp,
+  TrendingDown, Minus, Circle, CheckCircle2, XCircle, Clock,
+  BarChart3, Activity, Zap, Eye, Filter, RefreshCw, Download,
+  LogOut, User, Moon
+} from "lucide-react";
 
-    <script>
-        async function scanCode() {
-            const code = document.getElementById('code').value;
-            const language = document.getElementById('lang').value;
-            const res = await fetch('/scan', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({code, language})
-            });
-            const data = await res.json();
-            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-        }
-    </script>
-</body>
-</html>
+// ── Palette tokens ────────────────────────────────────────────────
+const C = {
+  bg:        "#0A0C10",
+  surface:   "#0F1218",
+  card:      "#141820",
+  border:    "#1E2535",
+  borderHi:  "#2A3650",
+  accent:    "#3B82F6",
+  accentDim: "#1E3A5F",
+  accentFg:  "#93C5FD",
+  success:   "#10B981",
+  warning:   "#F59E0B",
+  danger:    "#EF4444",
+  textHi:    "#F1F5F9",
+  textMid:   "#94A3B8",
+  textDim:   "#475569",
+};
+
+// ── Mock data ─────────────────────────────────────────────────────
+const NAV = [
+  { id: "dashboard",  label: "لوحة التحكم",   icon: LayoutDashboard },
+  { id: "scanner",    label: "فحص الكود",      icon: Code2 },
+  { id: "vulns",      label: "الثغرات",         icon: AlertTriangle },
+  { id: "reports",    label: "التقارير",         icon: FileSearch },
+  { id: "activity",   label: "السجلات",          icon: Activity },
+  { id: "settings",   label: "الإعدادات",        icon: Settings },
+];
+
+const STATS = [
+  { label: "إجمالي الفحوصات",   value: "1,284",  delta: "+12%",  up: true,  icon: FileSearch, accent: C.accent },
+  { label: "ثغرات حرجة",        value: "23",     delta: "-8%",   up: false, icon: XCircle,    accent: C.danger },
+  { label: "ثغرات تم إصلاحها",  value: "198",    delta: "+31%",  up: true,  icon: CheckCircle2,accent: C.success },
+  { label: "درجة الأمان",        value: "74/100", delta: "+5pts", up: true,  icon: Shield,     accent: "#A855F7" },
+];
+
+const VULNS = [
+  { id: 1, name: "SQL Injection", owasp: "A03:2021", sev: "critical", lang: "Python", line: 42, status: "open",    time: "منذ ساعتين" },
+  { id: 2, name: "XSS Reflected", owasp: "A03:2021", sev: "high",     lang: "JS",     line: 17, status: "open",    time: "منذ 4 ساعات" },
+  { id: 3, name: "Hardcoded Key", owasp: "A07:2021", sev: "critical", lang: "Python", line: 8,  status: "fixed",   time: "منذ 6 ساعات" },
+  { id: 4, name: "Weak MD5",      owasp: "A02:2021", sev: "high",     lang: "PHP",    line: 55, status: "open",    time: "البارحة" },
+  { id: 5, name: "eval() Usage",  owasp: "A03:2021", sev: "critical", lang: "JS",     line: 23, status: "review",  time: "البارحة" },
+  { id: 6, name: "Shell=True",    owasp: "A03:2021", sev: "medium",   lang: "Python", line: 91, status: "fixed",   time: "منذ يومين" },
+  { id: 7, name: "Debug Mode",    owasp: "A05:2021", sev: "medium",   lang: "Python", line: 3,  status: "fixed",   time: "منذ يومين" },
+  { id: 8, name: "gets() BOF",    owasp: "A03:2021", sev: "critical", lang: "C++",    line: 34, status: "open",    time: "منذ 3 أيام" },
+];
+
+const ACTIVITY = [
+  { icon: FileSearch, color: C.accent,   msg: "فحص جديد: auth_service.py",   sub: "كشف 3 ثغرات",   time: "الآن" },
+  { icon: CheckCircle2,color: C.success, msg: "تم إصلاح: SQL Injection",      sub: "api/users.py:42", time: "منذ 5د" },
+  { icon: AlertTriangle,color:C.warning, msg: "ثغرة جديدة: XSS في login.js", sub: "خطورة عالية",    time: "منذ 18د" },
+  { icon: RefreshCw,  color: C.textMid,  msg: "إعادة فحص: database.py",       sub: "لا توجد تغييرات",time: "منذ 1س" },
+  { icon: Download,   color: "#A855F7",  msg: "تقرير PDF: Sprint-44",         sub: "تم التصدير",     time: "منذ 2س" },
+];
+
+const LANG_DIST = [
+  { lang: "Python",     count: 47, pct: 47, color: C.accent },
+  { lang: "JavaScript", count: 28, pct: 28, color: "#F59E0B" },
+  { lang: "PHP",        count: 15, pct: 15, color: "#A855F7" },
+  { lang: "Java",       count: 6,  pct: 6,  color: C.success },
+  { lang: "C++",        count: 4,  pct: 4,  color: C.danger },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────
+const SEV_META = {
+  critical: { label: "حرج",   bg: "#1C0A0A", text: C.danger,  dot: C.danger },
+  high:     { label: "عالي",  bg: "#1C1100", text: C.warning, dot: C.warning },
+  medium:   { label: "متوسط", bg: "#1C1600", text: "#FCD34D", dot: "#FCD34D" },
+  low:      { label: "منخفض", bg: "#071510", text: C.success, dot: C.success },
+};
+
+const STATUS_META = {
+  open:   { label: "مفتوح",   bg: "#1C0A0A", text: C.danger },
+  fixed:  { label: "مُصلح",   bg: "#071510", text: C.success },
+  review: { label: "مراجعة",  bg: "#1C1100", text: C.warning },
+};
+
+function Badge({ type, map }) {
+  const m = map[type] || {};
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "3px 9px", borderRadius: 20,
+      fontSize: 11, fontWeight: 600, fontFamily: "monospace",
+      textTransform: "uppercase", letterSpacing: ".5px",
+      background: m.bg, color: m.text, whiteSpace: "nowrap",
+    }}>
+      {m.dot && <span style={{ width:5, height:5, borderRadius:"50%", background:m.dot, flexShrink:0 }} />}
+      {m.label}
+    </span>
+  );
+}
+
+function StatCard({ stat }) {
+  const Icon = stat.icon;
+  return (
+    <div style={{
+      background: C.card, border: `1px solid ${C.border}`, borderRadius: 16,
+      padding: "20px 22px", display:"flex", flexDirection:"column", gap:14,
+      transition: "border-color .2s",
+    }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = C.borderHi}
+      onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+    >
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <span style={{ fontSize:12, color: C.textMid, fontWeight:500 }}>{stat.label}</span>
+        <div style={{
+          width:34, height:34, borderRadius:10,
+          background: stat.accent + "22",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          <Icon size={17} color={stat.accent} />
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize:28, fontWeight:700, color: C.textHi, lineHeight:1, fontFamily:"monospace" }}>
+          {stat.value}
+        </div>
+        <div style={{ marginTop:6, display:"flex", alignItems:"center", gap:5 }}>
+          {stat.up ? <TrendingUp size={13} color={C.success} /> : <TrendingDown size={13} color={C.danger} />}
+          <span style={{ fontSize:12, color: stat.up ? C.success : C.danger, fontWeight:500 }}>
+            {stat.delta}
+          </span>
+          <span style={{ fontSize:11, color: C.textDim }}>هذا الشهر</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreRing({ score = 74 }) {
+  const r = 36, circ = 2 * Math.PI * r;
+  const fill = circ * (score / 100);
+  const color = score >= 80 ? C.success : score >= 60 ? C.warning : C.danger;
+  return (
+    <div style={{ position:"relative", width:100, height:100, flexShrink:0 }}>
+      <svg width={100} height={100} style={{ transform:"rotate(-90deg)" }}>
+        <circle cx={50} cy={50} r={r} fill="none" stroke={C.border} strokeWidth={7} />
+        <circle cx={50} cy={50} r={r} fill="none" stroke={color} strokeWidth={7}
+          strokeLinecap="round"
+          strokeDasharray={`${fill} ${circ - fill}`} />
+      </svg>
+      <div style={{
+        position:"absolute", inset:0, display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center",
+      }}>
+        <span style={{ fontSize:22, fontWeight:700, color, lineHeight:1, fontFamily:"monospace" }}>{score}</span>
+        <span style={{ fontSize:10, color: C.textDim, marginTop:2 }}>/ 100</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────
+function Sidebar({ active, onNav, collapsed, onToggle }) {
+  return (
+    <aside style={{
+      width: collapsed ? 64 : 220,
+      background: C.surface,
+      borderLeft: `1px solid ${C.border}`,
+      display:"flex", flexDirection:"column",
+      height:"100%",
+      transition: "width .25s cubic-bezier(.4,0,.2,1)",
+      flexShrink:0,
+      overflow:"hidden",
+    }}>
+      {/* Logo */}
+      <div style={{
+        height:60, display:"flex", alignItems:"center",
+        padding: collapsed ? "0 18px" : "0 20px",
+        borderBottom: `1px solid ${C.border}`,
+        gap:10, overflow:"hidden",
+      }}>
+        <div style={{
+          width:32, height:32, borderRadius:9, flexShrink:0,
+          background: C.accent + "22", border: `1px solid ${C.accent}44`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          <Shield size={17} color={C.accent} />
+        </div>
+        {!collapsed && (
+          <div style={{ whiteSpace:"nowrap" }}>
+            <div style={{ fontSize:14, fontWeight:700, color: C.textHi }}>SecureCode</div>
+            <div style={{ fontSize:10, color: C.textDim }}>Pro Dashboard</div>
+          </div>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex:1, padding:"12px 8px", display:"flex", flexDirection:"column", gap:2 }}>
+        {NAV.map(item => {
+          const Icon = item.icon;
+          const isActive = active === item.id;
+          return (
+            <button key={item.id} onClick={() => onNav(item.id)}
+              title={collapsed ? item.label : undefined}
+              style={{
+                display:"flex", alignItems:"center", gap:10,
+                padding: collapsed ? "10px 14px" : "10px 12px",
+                borderRadius:10, border:"none", cursor:"pointer",
+                background: isActive ? C.accentDim : "transparent",
+                color: isActive ? C.accentFg : C.textMid,
+                fontFamily:"inherit", fontSize:13, fontWeight: isActive ? 600 : 400,
+                transition:"all .15s",
+                whiteSpace:"nowrap", overflow:"hidden",
+                textAlign:"right",
+                justifyContent: collapsed ? "center" : "flex-start",
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.card; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+            >
+              <Icon size={17} style={{ flexShrink:0 }} />
+              {!collapsed && item.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Collapse toggle */}
+      <div style={{ padding:"12px 8px", borderTop:`1px solid ${C.border}` }}>
+        <button onClick={onToggle} style={{
+          width:"100%", display:"flex", alignItems:"center",
+          justifyContent: collapsed ? "center" : "space-between",
+          padding: collapsed ? "8px 14px" : "8px 12px",
+          background:"transparent", border:"none", cursor:"pointer",
+          color: C.textDim, borderRadius:8, fontSize:12, fontFamily:"inherit",
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = C.card}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          {!collapsed && <span>طيّ القائمة</span>}
+          {collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ── Topbar ─────────────────────────────────────────────────────────
+function Topbar({ pageTitle }) {
+  return (
+    <header style={{
+      height:60, background: C.surface, borderBottom:`1px solid ${C.border}`,
+      display:"flex", alignItems:"center", justifyContent:"space-between",
+      padding:"0 24px", gap:16, flexShrink:0,
+    }}>
+      <h1 style={{ fontSize:16, fontWeight:600, color: C.textHi, margin:0 }}>{pageTitle}</h1>
+
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        {/* Search */}
+        <div style={{
+          display:"flex", alignItems:"center", gap:8,
+          background: C.card, border:`1px solid ${C.border}`,
+          borderRadius:9, padding:"7px 13px",
+        }}>
+          <Search size={14} color={C.textDim} />
+          <input placeholder="بحث سريع…" style={{
+            background:"transparent", border:"none", outline:"none",
+            fontSize:13, color: C.textMid, fontFamily:"inherit",
+            width:160, direction:"rtl",
+          }} />
+        </div>
+
+        {/* Bell */}
+        <button style={{
+          position:"relative", width:36, height:36, borderRadius:9,
+          background: C.card, border:`1px solid ${C.border}`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          cursor:"pointer",
+        }}>
+          <Bell size={16} color={C.textMid} />
+          <span style={{
+            position:"absolute", top:7, right:7,
+            width:7, height:7, borderRadius:"50%",
+            background: C.danger, border:`2px solid ${C.surface}`,
+          }} />
+        </button>
+
+        {/* Avatar */}
+        <div style={{
+          width:34, height:34, borderRadius:9,
+          background: C.accentDim, border:`1px solid ${C.accent}44`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:12, fontWeight:700, color: C.accentFg, cursor:"pointer",
+        }}>AH</div>
+      </div>
+    </header>
+  );
+}
+
+// ── Vuln Table ─────────────────────────────────────────────────────
+function VulnTable({ data, limit }) {
+  const rows = limit ? data.slice(0, limit) : data;
+  return (
+    <div style={{ overflowX:"auto" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+        <thead>
+          <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+            {["الثغرة","OWASP","الخطورة","اللغة","السطر","الحالة","الوقت"].map(h => (
+              <th key={h} style={{ padding:"10px 12px", color: C.textDim, fontWeight:500,
+                fontSize:11, textAlign:"right", textTransform:"uppercase", letterSpacing:".5px",
+                whiteSpace:"nowrap" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((v, i) => (
+            <tr key={v.id} style={{
+              borderBottom:`1px solid ${C.border}`,
+              background: i % 2 === 0 ? "transparent" : C.surface + "88",
+              transition:"background .15s",
+              cursor:"pointer",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = C.card}
+              onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "transparent" : C.surface + "88"}
+            >
+              <td style={{ padding:"11px 12px", color: C.textHi, fontWeight:500 }}>{v.name}</td>
+              <td style={{ padding:"11px 12px" }}>
+                <code style={{ fontSize:11, color: C.textDim, fontFamily:"monospace" }}>{v.owasp}</code>
+              </td>
+              <td style={{ padding:"11px 12px" }}><Badge type={v.sev} map={SEV_META} /></td>
+              <td style={{ padding:"11px 12px" }}>
+                <span style={{ fontFamily:"monospace", fontSize:12, color: C.accentFg }}>{v.lang}</span>
+              </td>
+              <td style={{ padding:"11px 12px" }}>
+                <span style={{ fontFamily:"monospace", fontSize:12, color: C.textMid }}>:{v.line}</span>
+              </td>
+              <td style={{ padding:"11px 12px" }}><Badge type={v.status} map={STATUS_META} /></td>
+              <td style={{ padding:"11px 12px", color: C.textDim, fontSize:12 }}>{v.time}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Dashboard Page ──────────────────────────────────────────────────
+function DashboardPage() {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+      {/* Stat cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14 }}>
+        {STATS.map(s => <StatCard key={s.label} stat={s} />)}
+      </div>
+
+      {/* Middle row */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:14 }}>
+
+        {/* Security score card */}
+        <div style={{
+          background: C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:22,
+        }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+            <div>
+              <h2 style={{ margin:0, fontSize:15, fontWeight:600, color: C.textHi }}>حالة الأمان</h2>
+              <p style={{ margin:"4px 0 0", fontSize:12, color: C.textDim }}>آخر فحص: منذ 12 دقيقة</p>
+            </div>
+            <ScoreRing score={74} />
+          </div>
+
+          {/* Breakdown bars */}
+          {[
+            { label:"الثغرات الحرجة",  pct:18, color: C.danger },
+            { label:"الثغرات العالية",  pct:35, color: C.warning },
+            { label:"المتوسطة",          pct:27, color: "#FCD34D" },
+            { label:"المنخفضة",          pct:20, color: C.success },
+          ].map(b => (
+            <div key={b.label} style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                <span style={{ fontSize:12, color: C.textMid }}>{b.label}</span>
+                <span style={{ fontSize:12, color: C.textDim, fontFamily:"monospace" }}>{b.pct}%</span>
+              </div>
+              <div style={{ height:5, background: C.border, borderRadius:10, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${b.pct}%`, background: b.color, borderRadius:10,
+                  transition:"width .6s ease" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Language distribution */}
+        <div style={{ background: C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:22 }}>
+          <h2 style={{ margin:"0 0 16px", fontSize:15, fontWeight:600, color: C.textHi }}>توزيع اللغات</h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {LANG_DIST.map(l => (
+              <div key={l.lang}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                  <span style={{ fontSize:12, color: C.textMid, fontFamily:"monospace" }}>{l.lang}</span>
+                  <span style={{ fontSize:12, color: C.textDim }}>{l.count}</span>
+                </div>
+                <div style={{ height:4, background: C.border, borderRadius:10, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${l.pct}%`, background: l.color, borderRadius:10 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent vulns */}
+      <div style={{ background: C.card, border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden" }}>
+        <div style={{ padding:"18px 22px", borderBottom:`1px solid ${C.border}`,
+          display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <h2 style={{ margin:0, fontSize:15, fontWeight:600, color: C.textHi }}>آخر الثغرات المكتشفة</h2>
+          <div style={{ display:"flex", gap:8 }}>
+            <button style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px",
+              background: C.surface, border:`1px solid ${C.border}`, borderRadius:8,
+              color: C.textMid, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+              <Filter size={13} /> تصفية
+            </button>
+            <button style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px",
+              background: C.surface, border:`1px solid ${C.border}`, borderRadius:8,
+              color: C.textMid, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+              <Download size={13} /> تصدير
+            </button>
+          </div>
+        </div>
+        <VulnTable data={VULNS} limit={5} />
+      </div>
+
+      {/* Activity feed */}
+      <div style={{ background: C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:22 }}>
+        <h2 style={{ margin:"0 0 16px", fontSize:15, fontWeight:600, color: C.textHi }}>آخر النشاطات</h2>
+        <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+          {ACTIVITY.map((a, i) => {
+            const Icon = a.icon;
+            return (
+              <div key={i} style={{
+                display:"flex", alignItems:"flex-start", gap:12,
+                padding:"12px 0",
+                borderBottom: i < ACTIVITY.length - 1 ? `1px solid ${C.border}` : "none",
+              }}>
+                <div style={{
+                  width:32, height:32, borderRadius:9, flexShrink:0,
+                  background: a.color + "18",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <Icon size={15} color={a.color} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, color: C.textHi, fontWeight:500 }}>{a.msg}</div>
+                  <div style={{ fontSize:12, color: C.textDim, marginTop:2 }}>{a.sub}</div>
+                </div>
+                <span style={{ fontSize:11, color: C.textDim, whiteSpace:"nowrap", marginTop:2 }}>{a.time}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// ── Vulnerabilities Page ────────────────────────────────────────────
+function VulnsPage() {
+  const [filter, setFilter] = useState("all");
+  const filtered = filter === "all" ? VULNS : VULNS.filter(v => v.sev === filter || v.status === filter);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {/* Summary strip */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+        {[
+          { label:"إجمالي", val: VULNS.length, color: C.textHi },
+          { label:"حرج",    val: VULNS.filter(v=>v.sev==="critical").length, color: C.danger },
+          { label:"مفتوح",  val: VULNS.filter(v=>v.status==="open").length,  color: C.warning },
+          { label:"مُصلح",  val: VULNS.filter(v=>v.status==="fixed").length, color: C.success },
+        ].map(s => (
+          <div key={s.label} style={{
+            background: C.card, border:`1px solid ${C.border}`, borderRadius:12,
+            padding:"14px 18px", textAlign:"center",
+          }}>
+            <div style={{ fontSize:26, fontWeight:700, color: s.color, fontFamily:"monospace" }}>{s.val}</div>
+            <div style={{ fontSize:11, color: C.textDim, marginTop:3, textTransform:"uppercase", letterSpacing:".5px" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+        {["all","critical","high","medium","open","fixed"].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{
+            padding:"5px 14px", borderRadius:20, border:`1px solid ${filter===f ? C.accent : C.border}`,
+            background: filter===f ? C.accentDim : C.card,
+            color: filter===f ? C.accentFg : C.textMid,
+            fontSize:12, cursor:"pointer", fontFamily:"monospace",
+            transition:"all .15s",
+          }}>
+            {{ all:"الكل", critical:"حرج", high:"عالي", medium:"متوسط", open:"مفتوح", fixed:"مُصلح" }[f]}
+          </button>
+        ))}
+        <span style={{ marginRight:"auto", fontSize:12, color: C.textDim, alignSelf:"center" }}>
+          {filtered.length} نتيجة
+        </span>
+      </div>
+
+      {/* Full table */}
+      <div style={{ background: C.card, border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden" }}>
+        <VulnTable data={filtered} />
+      </div>
+    </div>
+  );
+}
+
+// ── Empty page placeholder ─────────────────────────────────────────
+function PlaceholderPage({ title }) {
+  return (
+    <div style={{
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      height:320, gap:12, color: C.textDim, textAlign:"center",
+    }}>
+      <BarChart3 size={44} style={{ opacity:.2 }} />
+      <p style={{ fontSize:14, margin:0 }}>صفحة {title} قيد التطوير</p>
+    </div>
+  );
+}
+
+// ── Root App ────────────────────────────────────────────────────────
+export default function App() {
+  const [activePage, setActivePage] = useState("dashboard");
+  const [collapsed, setCollapsed]   = useState(false);
+
+  const PAGE_TITLES = {
+    dashboard: "لوحة التحكم",
+    scanner:   "فحص الكود",
+    vulns:     "الثغرات الأمنية",
+    reports:   "التقارير",
+    activity:  "سجل النشاطات",
+    settings:  "الإعدادات",
+  };
+
+  function renderPage() {
+    if (activePage === "dashboard") return <DashboardPage />;
+    if (activePage === "vulns")     return <VulnsPage />;
+    return <PlaceholderPage title={PAGE_TITLES[activePage]} />;
+  }
+
+  return (
+    <div style={{
+      display:"flex", height:"100vh", background: C.bg,
+      fontFamily:"'Inter', 'Geist', system-ui, sans-serif",
+      direction:"rtl", color: C.textHi, overflow:"hidden",
+    }}>
+      <Sidebar
+        active={activePage}
+        onNav={setActivePage}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(c => !c)}
+      />
+
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
+        <Topbar pageTitle={PAGE_TITLES[activePage]} />
+
+        <main style={{
+          flex:1, overflowY:"auto", padding:24,
+          scrollbarWidth:"thin", scrollbarColor:`${C.border} transparent`,
+        }}>
+          {renderPage()}
+        </main>
+      </div>
+    </div>
+  );
+}
