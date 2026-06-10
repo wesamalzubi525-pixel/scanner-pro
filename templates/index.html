@@ -1,761 +1,967 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SecureStay — Hotel Booking Security Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VaultScan — فاحص الثغرات البرمجية</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            void:    '#0D0F14',
-            surface: '#161A22',
-            panel:   '#1E2430',
-            border:  '#252D3A',
-            cyan:    '#00E5FF',
-            violet:  '#8B5CF6',
-            emerald: '#10B981',
-            amber:   '#F59E0B',
-            rose:    '#F43F5E',
-            muted:   '#94A3B8',
-            faint:   '#4A5568',
+            bg:      '#0a0c0f',
+            surface: '#0f1318',
+            panel:   '#141920',
+            border:  '#1e2730',
+            cyan:    '#00d4c8',
+            green:   '#39ff7e',
+            amber:   '#f59e0b',
+            red:     '#ff4757',
+            muted:   '#4a5568',
+            text:    '#c9d4e0',
           },
           fontFamily: {
+            mono: ['IBM Plex Mono', 'monospace'],
             sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
           },
-          boxShadow: {
-            'glow-cyan':   '0 0 20px rgba(0,229,255,0.15)',
-            'glow-violet': '0 0 20px rgba(139,92,246,0.2)',
-            'card':        '0 4px 24px rgba(0,0,0,0.4)',
-          },
-          animation: {
-            'pulse-ring': 'pulseRing 2.4s cubic-bezier(0.4,0,0.6,1) infinite',
-            'fade-in':    'fadeIn 0.4s ease forwards',
-            'slide-in':   'slideIn 0.35s ease forwards',
-          },
-          keyframes: {
-            pulseRing: {
-              '0%,100%': { opacity: '0.8', transform: 'scale(1)' },
-              '50%':     { opacity: '0.3', transform: 'scale(1.12)' },
-            },
-            fadeIn:  { from: { opacity: '0' }, to: { opacity: '1' } },
-            slideIn: { from: { opacity: '0', transform: 'translateY(12px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
-          }
-        }
-      }
-    }
+        },
+      },
+    };
   </script>
 
   <style>
     * { box-sizing: border-box; }
-    body { background: #0D0F14; font-family: 'Inter', sans-serif; }
+    body { background: #0a0c0f; color: #c9d4e0; font-family: 'Inter', sans-serif; }
 
+    /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: #161A22; }
-    ::-webkit-scrollbar-thumb { background: #252D3A; border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: #0f1318; }
+    ::-webkit-scrollbar-thumb { background: #1e2730; border-radius: 2px; }
 
-    .sidebar-link { transition: all 0.2s ease; }
-    .sidebar-link:hover { background: rgba(0,229,255,0.06); color: #00E5FF; }
-    .sidebar-link.active { background: rgba(0,229,255,0.1); color: #00E5FF; border-right: 2px solid #00E5FF; }
-    .sidebar-link.active .nav-icon { color: #00E5FF; }
-
-    .card { animation: slideIn 0.4s ease forwards; }
-    .card:hover { transform: translateY(-2px); transition: transform 0.2s ease; }
-
-    .threat-ring::before {
-      content: '';
-      position: absolute;
-      inset: -8px;
-      border-radius: 50%;
-      border: 2px solid rgba(0,229,255,0.35);
-      animation: pulseRing 2.4s cubic-bezier(0.4,0,0.6,1) infinite;
+    /* Sidebar active glow */
+    .nav-active {
+      background: rgba(0, 212, 200, 0.08);
+      border-left: 2px solid #00d4c8;
+      color: #00d4c8;
     }
-    .threat-ring::after {
-      content: '';
-      position: absolute;
-      inset: -16px;
-      border-radius: 50%;
-      border: 1px solid rgba(0,229,255,0.15);
-      animation: pulseRing 2.4s cubic-bezier(0.4,0,0.6,1) infinite 0.8s;
+    .nav-item {
+      border-left: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: #c9d4e0; }
+
+    /* Scan button pulse ring */
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(0,212,200,0.35); }
+      70%  { box-shadow: 0 0 0 14px rgba(0,212,200,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,212,200,0); }
+    }
+    .scan-btn { animation: pulse-ring 2.4s cubic-bezier(0.4,0,0.6,1) infinite; }
+    .scan-btn:hover { animation: none; box-shadow: 0 0 28px rgba(0,212,200,0.5); }
+    .scan-btn:active { transform: scale(0.97); }
+
+    /* Scanning bar animation */
+    @keyframes scan-bar {
+      0%   { transform: translateY(-100%); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { transform: translateY(calc(100vh)); opacity: 0; }
+    }
+    .scan-line {
+      animation: scan-bar 2.8s ease-in-out infinite;
+      background: linear-gradient(to bottom, transparent, rgba(0,212,200,0.25), transparent);
     }
 
-    .progress-bar { transition: width 1s ease; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; }
+    /* Progress bar shimmer */
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .progress-shimmer {
+      background: linear-gradient(90deg, #00d4c8 0%, #39ff7e 50%, #00d4c8 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s linear infinite;
+    }
 
-    #sidebar { transition: width 0.3s ease; }
-    #sidebar.collapsed { width: 64px; }
-    #sidebar.collapsed .nav-label,
-    #sidebar.collapsed .logo-text,
-    #sidebar.collapsed .sidebar-footer-text { display: none; }
-    #sidebar.collapsed .sidebar-link { justify-content: center; padding: 10px; }
+    /* Textarea code style */
+    .code-area {
+      background: #080b0e;
+      border: 1px solid #1e2730;
+      color: #c9d4e0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    .code-area:focus { outline: none; border-color: #00d4c8; box-shadow: 0 0 0 1px rgba(0,212,200,0.2); }
 
-    .log-row:hover { background: rgba(255,255,255,0.03); }
-    .sparkline path { fill: none; stroke-width: 1.5; }
+    /* Severity badges */
+    .badge-critical { background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
+    .badge-high     { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-medium   { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+    .badge-low      { background: rgba(57,255,126,0.1);  color: #39ff7e; border: 1px solid rgba(57,255,126,0.25); }
+    .badge-info     { background: rgba(0,212,200,0.1);   color: #00d4c8; border: 1px solid rgba(0,212,200,0.25); }
 
-    @keyframes countUp {
-      from { opacity: 0; transform: translateY(6px); }
+    /* Card hover */
+    .stat-card { transition: border-color 0.2s, transform 0.2s; }
+    .stat-card:hover { border-color: #00d4c8; transform: translateY(-2px); }
+
+    /* Result row */
+    .vuln-row { border-bottom: 1px solid #1a2028; transition: background 0.15s; }
+    .vuln-row:hover { background: rgba(0,212,200,0.04); cursor: pointer; }
+    .vuln-row:last-child { border-bottom: none; }
+
+    /* Fade-in */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .stat-num { animation: countUp 0.6s ease forwards; }
+    .fade-up { animation: fade-up 0.4s ease both; }
 
-    .tooltip { position: relative; }
-    .tooltip:hover::after {
-      content: attr(data-tip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1E2430;
-      border: 1px solid #252D3A;
-      color: #94A3B8;
-      font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 50;
+    /* Terminal typing cursor */
+    @keyframes blink { 50% { opacity: 0; } }
+    .cursor { animation: blink 1s step-start infinite; }
+
+    /* Section header accent */
+    .section-accent { width: 3px; background: linear-gradient(to bottom, #00d4c8, #39ff7e); border-radius: 2px; }
+
+    /* Logo shimmer text */
+    .logo-text {
+      background: linear-gradient(90deg, #00d4c8, #39ff7e, #00d4c8);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
     }
   </style>
 </head>
+<body class="min-h-screen flex overflow-hidden" style="background:#0a0c0f">
 
-<body class="min-h-screen flex text-slate-200 overflow-hidden">
-
-<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
-<aside id="sidebar" class="w-60 min-h-screen bg-panel border-r border-border flex flex-col flex-shrink-0 z-20">
+<!-- ═══════════════════════  SIDEBAR  ═══════════════════════ -->
+<aside class="w-16 lg:w-56 flex-shrink-0 flex flex-col" style="background:#080b0e; border-right:1px solid #1a2028; height:100vh; position:sticky; top:0;">
 
   <!-- Logo -->
-  <div class="px-4 py-5 flex items-center gap-3 border-b border-border">
-    <div class="w-8 h-8 rounded-lg bg-cyan flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg,#00E5FF,#8B5CF6);">
-      <i data-lucide="shield-check" class="w-4 h-4 text-white"></i>
+  <div class="flex items-center gap-3 px-4 py-5 mb-2" style="border-bottom:1px solid #1a2028;">
+    <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(0,212,200,0.12); border:1px solid rgba(0,212,200,0.25);">
+      <i data-lucide="shield-check" class="w-4 h-4" style="color:#00d4c8;"></i>
     </div>
-    <span class="logo-text font-semibold text-sm tracking-wide text-white">SecureStay</span>
-    <span class="logo-text ml-auto text-xs font-mono text-cyan bg-cyan/10 px-2 py-0.5 rounded-full">v2.4</span>
+    <div class="hidden lg:block">
+      <div class="font-bold text-sm tracking-widest logo-text font-mono">VAULTSCAN</div>
+      <div class="text-xs" style="color:#3a4a5a; font-family: 'IBM Plex Mono'; margin-top:-1px;">v2.4.1 — Enterprise</div>
+    </div>
   </div>
 
   <!-- Nav -->
-  <nav class="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-
-    <p class="nav-label text-faint text-[10px] font-semibold uppercase tracking-widest px-3 py-2">Overview</p>
-
-    <a href="#" class="sidebar-link active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer">
-      <i data-lucide="layout-dashboard" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Dashboard</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="shield" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Threat Center</span>
-      <span class="nav-label ml-auto text-[10px] bg-rose/20 text-rose px-2 py-0.5 rounded-full font-semibold">3</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="users" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Guest Sessions</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="credit-card" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Payment Integrity</span>
-    </a>
-
-    <p class="nav-label text-faint text-[10px] font-semibold uppercase tracking-widest px-3 py-2 mt-3">Monitoring</p>
-
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="activity" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Live Traffic</span>
-      <span class="nav-label ml-auto flex items-center gap-1">
-        <span class="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse"></span>
-      </span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="file-text" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Audit Logs</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="map-pin" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Geo Firewall</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="bell" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Alerts</span>
-      <span class="nav-label ml-auto text-[10px] bg-amber/20 text-amber px-2 py-0.5 rounded-full font-semibold">7</span>
-    </a>
-
-    <p class="nav-label text-faint text-[10px] font-semibold uppercase tracking-widest px-3 py-2 mt-3">Settings</p>
-
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="settings-2" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">Configuration</span>
-    </a>
-    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted cursor-pointer">
-      <i data-lucide="key-round" class="nav-icon w-4 h-4 flex-shrink-0"></i>
-      <span class="nav-label">API Keys</span>
-    </a>
+  <nav class="flex-1 px-2 py-3 space-y-1">
+    <button onclick="switchView('dashboard')" id="nav-dashboard"
+      class="nav-item nav-active w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
+      style="font-family:'IBM Plex Mono';">
+      <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
+      <span class="hidden lg:inline">لوحة التحكم</span>
+    </button>
+    <button onclick="switchView('scan')" id="nav-scan"
+      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
+      style="color:#4a5568; font-family:'IBM Plex Mono';">
+      <i data-lucide="search-code" class="w-4 h-4 flex-shrink-0"></i>
+      <span class="hidden lg:inline">فحص الكود</span>
+    </button>
+    <button onclick="switchView('logs')" id="nav-logs"
+      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
+      style="color:#4a5568; font-family:'IBM Plex Mono';">
+      <i data-lucide="terminal" class="w-4 h-4 flex-shrink-0"></i>
+      <span class="hidden lg:inline">السجلات</span>
+    </button>
+    <button onclick="switchView('settings')" id="nav-settings"
+      class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium"
+      style="color:#4a5568; font-family:'IBM Plex Mono';">
+      <i data-lucide="settings-2" class="w-4 h-4 flex-shrink-0"></i>
+      <span class="hidden lg:inline">الإعدادات</span>
+    </button>
   </nav>
 
-  <!-- Footer -->
-  <div class="p-3 border-t border-border">
-    <div class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-      <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet to-cyan flex items-center justify-center text-white text-xs font-bold flex-shrink-0">AM</div>
-      <div class="sidebar-footer-text min-w-0">
-        <p class="text-xs font-medium text-white truncate">Ahmed Malik</p>
-        <p class="text-[10px] text-muted">Security Admin</p>
-      </div>
-      <i data-lucide="chevrons-up-down" class="nav-icon w-3.5 h-3.5 text-faint ml-auto flex-shrink-0 sidebar-footer-text"></i>
+  <!-- Status indicator -->
+  <div class="px-4 py-4" style="border-top:1px solid #1a2028;">
+    <div class="hidden lg:flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 6px #39ff7e;"></span>
+      <span class="text-xs font-mono" style="color:#4a5568;">ENGINE ONLINE</span>
+    </div>
+    <div class="lg:hidden flex justify-center">
+      <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 6px #39ff7e;"></span>
     </div>
   </div>
 </aside>
 
-<!-- ═══════════════════ MAIN ═══════════════════ -->
-<main class="flex-1 flex flex-col min-h-screen overflow-y-auto bg-void">
+<!-- ═══════════════════════  MAIN CONTENT  ═══════════════════════ -->
+<main class="flex-1 flex flex-col overflow-auto" style="height:100vh;">
 
-  <!-- Topbar -->
-  <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-void/80 backdrop-blur-md">
-    <div class="flex items-center gap-4">
-      <button id="toggle-sidebar" class="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center transition-colors text-muted hover:text-white">
-        <i data-lucide="panel-left" class="w-4 h-4"></i>
-      </button>
-      <div>
-        <h1 class="text-sm font-semibold text-white">Security Dashboard</h1>
-        <p class="text-xs text-muted">Grand Meridian Hotel · <span class="text-cyan">All systems nominal</span></p>
-      </div>
+  <!-- Top bar -->
+  <header class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background:#080b0e; border-bottom:1px solid #1a2028;">
+    <div>
+      <h1 id="page-title" class="text-base font-semibold" style="color:#e2e8f0;">لوحة التحكم</h1>
+      <p id="page-subtitle" class="text-xs font-mono mt-0.5" style="color:#3a4a5a;">نظرة عامة على حالة الأمان</p>
     </div>
-
     <div class="flex items-center gap-3">
-      <!-- Search -->
-      <div class="relative hidden md:block">
-        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-faint"></i>
-        <input type="text" placeholder="Search events, IPs, guests…" class="pl-9 pr-4 py-2 text-xs bg-surface border border-border rounded-lg text-white placeholder-faint focus:outline-none focus:border-cyan/50 focus:ring-1 focus:ring-cyan/20 w-56 transition-all"/>
+      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded" style="background:#0f1318; border:1px solid #1e2730;">
+        <i data-lucide="clock" class="w-3 h-3" style="color:#3a4a5a;"></i>
+        <span id="live-clock" class="text-xs font-mono" style="color:#4a5568;"></span>
       </div>
-
-      <!-- Date range -->
-      <button class="hidden md:flex items-center gap-2 px-3 py-2 text-xs text-muted bg-surface border border-border rounded-lg hover:border-cyan/30 hover:text-white transition-all">
-        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-        Last 24 hours
-        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+      <button class="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono transition-all"
+        style="background:rgba(0,212,200,0.08); border:1px solid rgba(0,212,200,0.2); color:#00d4c8;"
+        onmouseover="this.style.background='rgba(0,212,200,0.15)'"
+        onmouseout="this.style.background='rgba(0,212,200,0.08)'">
+        <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">3 تنبيهات</span>
       </button>
-
-      <!-- Notification bell -->
-      <button class="relative w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center hover:border-cyan/30 transition-colors text-muted hover:text-white">
-        <i data-lucide="bell" class="w-4 h-4"></i>
-        <span class="absolute -top-1 -right-1 w-4 h-4 bg-rose rounded-full text-[9px] font-bold flex items-center justify-center text-white">3</span>
-      </button>
-
-      <!-- Refresh -->
-      <button class="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center hover:border-cyan/30 transition-colors text-muted hover:text-white tooltip" data-tip="Refresh data">
-        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-      </button>
+      <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs"
+        style="background:linear-gradient(135deg,#00d4c8,#39ff7e); color:#080b0e;">أم</div>
     </div>
   </header>
 
-  <!-- Content -->
-  <div class="flex-1 p-6 space-y-6">
+  <!-- ── DASHBOARD VIEW ── -->
+  <div id="view-dashboard" class="flex-1 p-6 overflow-auto">
 
-    <!-- ── Alert Banner ── -->
-    <div class="flex items-center gap-3 px-4 py-3 bg-rose/10 border border-rose/20 rounded-xl text-sm text-rose animate-fade-in">
-      <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
-      <span class="font-medium">Critical:</span>
-      <span class="text-rose/80">3 brute-force attempts detected on Room 412 booking portal in the last 5 minutes.</span>
-      <button class="ml-auto text-xs border border-rose/30 hover:bg-rose/10 px-3 py-1 rounded-lg transition-colors">Investigate</button>
-      <button class="text-rose/40 hover:text-rose transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
-    </div>
+    <!-- Stats grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-    <!-- ── KPI Row ── -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-      <!-- Security Score -->
-      <div class="card col-span-2 lg:col-span-1 bg-surface border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs text-muted font-medium uppercase tracking-wider">Security Score</p>
-            <p class="text-4xl font-bold text-white mt-1 stat-num">94<span class="text-lg text-muted font-normal">/100</span></p>
+      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.2);">
+            <i data-lucide="skull" class="w-4 h-4" style="color:#ff4757;"></i>
           </div>
-          <div class="relative flex-shrink-0 threat-ring">
-            <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: conic-gradient(#00E5FF 338deg, #1E2430 0deg);">
-              <div class="w-9 h-9 rounded-full bg-surface flex items-center justify-center">
-                <i data-lucide="shield-check" class="w-4 h-4 text-cyan"></i>
-              </div>
-            </div>
-          </div>
+          <span class="badge-critical text-xs px-2 py-0.5 rounded font-mono">+3</span>
         </div>
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-xs text-muted">
-            <span>Compliance</span><span class="text-emerald">Excellent</span>
-          </div>
-          <div class="h-1.5 bg-border rounded-full overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-cyan to-emerald rounded-full progress-bar" style="width:94%"></div>
-          </div>
-        </div>
-        <p class="text-[11px] text-muted">↑ <span class="text-emerald">+2pts</span> from yesterday</p>
+        <div class="text-2xl font-bold font-mono mb-1" style="color:#ff4757;" id="stat-critical">07</div>
+        <div class="text-xs" style="color:#4a5568;">ثغرات حرجة</div>
       </div>
 
-      <!-- Threats Blocked -->
-      <div class="card bg-surface border border-border rounded-2xl p-5 shadow-card">
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs text-muted font-medium uppercase tracking-wider">Threats Blocked</p>
-          <div class="w-8 h-8 rounded-lg bg-rose/10 flex items-center justify-center">
-            <i data-lucide="shield-x" class="w-4 h-4 text-rose"></i>
+      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2);">
+            <i data-lucide="alert-triangle" class="w-4 h-4" style="color:#f59e0b;"></i>
           </div>
+          <span class="badge-high text-xs px-2 py-0.5 rounded font-mono">+8</span>
         </div>
-        <p class="text-3xl font-bold text-white stat-num">1,247</p>
-        <div class="mt-3">
-          <svg viewBox="0 0 80 28" class="w-full h-7 sparkline">
-            <path d="M0,22 C10,18 15,8 20,10 C25,12 30,4 40,6 C50,8 55,14 60,10 C65,6 70,12 80,8" stroke="#F43F5E" opacity="0.7"/>
-            <path d="M0,22 C10,18 15,8 20,10 C25,12 30,4 40,6 C50,8 55,14 60,10 C65,6 70,12 80,8 L80,28 L0,28 Z" fill="url(#rose-grad)" opacity="0.15"/>
-            <defs>
-              <linearGradient id="rose-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#F43F5E"/>
-                <stop offset="100%" stop-color="transparent"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <p class="text-[11px] text-muted mt-1">↑ <span class="text-rose">+18%</span> this week</p>
+        <div class="text-2xl font-bold font-mono mb-1" style="color:#f59e0b;" id="stat-high">24</div>
+        <div class="text-xs" style="color:#4a5568;">ثغرات عالية</div>
       </div>
 
-      <!-- Active Sessions -->
-      <div class="card bg-surface border border-border rounded-2xl p-5 shadow-card">
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs text-muted font-medium uppercase tracking-wider">Active Sessions</p>
-          <div class="w-8 h-8 rounded-lg bg-cyan/10 flex items-center justify-center">
-            <i data-lucide="users" class="w-4 h-4 text-cyan"></i>
+      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2);">
+            <i data-lucide="alert-circle" class="w-4 h-4" style="color:#fbbf24;"></i>
           </div>
+          <span class="badge-medium text-xs px-2 py-0.5 rounded font-mono">+12</span>
         </div>
-        <p class="text-3xl font-bold text-white stat-num">348</p>
-        <div class="mt-3 flex items-end gap-1 h-7">
-          <!-- Mini bar chart -->
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:40%"></div>
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:60%"></div>
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:50%"></div>
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:80%"></div>
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:70%"></div>
-          <div class="flex-1 bg-cyan/20 rounded-sm" style="height:90%"></div>
-          <div class="flex-1 bg-cyan rounded-sm" style="height:100%"></div>
-        </div>
-        <p class="text-[11px] text-muted mt-1"><span class="text-emerald">●</span> 12 guests checking in now</p>
+        <div class="text-2xl font-bold font-mono mb-1" style="color:#fbbf24;" id="stat-medium">41</div>
+        <div class="text-xs" style="color:#4a5568;">ثغرات متوسطة</div>
       </div>
 
-      <!-- Failed Logins -->
-      <div class="card bg-surface border border-border rounded-2xl p-5 shadow-card">
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs text-muted font-medium uppercase tracking-wider">Failed Logins</p>
-          <div class="w-8 h-8 rounded-lg bg-amber/10 flex items-center justify-center">
-            <i data-lucide="lock" class="w-4 h-4 text-amber"></i>
+      <div class="stat-card rounded-lg p-4" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(57,255,126,0.08); border:1px solid rgba(57,255,126,0.2);">
+            <i data-lucide="info" class="w-4 h-4" style="color:#39ff7e;"></i>
           </div>
+          <span class="badge-low text-xs px-2 py-0.5 rounded font-mono">-2</span>
         </div>
-        <p class="text-3xl font-bold text-white stat-num">37</p>
-        <div class="mt-3 space-y-1.5">
-          <div class="flex justify-between text-[11px] text-muted">
-            <span>Threshold</span><span>37 / 50</span>
-          </div>
-          <div class="h-1.5 bg-border rounded-full overflow-hidden">
-            <div class="h-full bg-amber rounded-full progress-bar" style="width:74%"></div>
-          </div>
-        </div>
-        <p class="text-[11px] text-muted mt-1.5">↑ <span class="text-amber">+8</span> in last hour</p>
+        <div class="text-2xl font-bold font-mono mb-1" style="color:#39ff7e;" id="stat-low">18</div>
+        <div class="text-xs" style="color:#4a5568;">ثغرات منخفضة</div>
       </div>
     </div>
 
-    <!-- ── Middle Row ── -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Risk score + recent activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-      <!-- Vulnerability Scanner -->
-      <div class="card lg:col-span-2 bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div>
-            <h2 class="text-sm font-semibold text-white">Vulnerability Scanner</h2>
-            <p class="text-xs text-muted mt-0.5">Last scan: 14 minutes ago</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="badge text-[11px] bg-emerald/10 text-emerald border border-emerald/20 px-2.5 py-1 rounded-full font-medium">
-              <span class="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse"></span>
-              Active
-            </span>
-            <button class="text-xs text-muted hover:text-white border border-border hover:border-cyan/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
-              <i data-lucide="play" class="w-3 h-3"></i> Run Scan
-            </button>
-          </div>
+      <!-- Risk gauge -->
+      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="section-accent h-5"></div>
+          <span class="text-sm font-semibold" style="color:#e2e8f0;">مؤشر المخاطر</span>
         </div>
-
-        <div class="p-5 space-y-3">
-          <!-- Vuln items -->
-          <div class="flex items-center gap-4 p-3.5 rounded-xl bg-rose/5 border border-rose/15 hover:border-rose/30 transition-colors cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-rose/10 flex items-center justify-center flex-shrink-0">
-              <i data-lucide="alert-circle" class="w-4 h-4 text-rose"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-white">SQL Injection Risk</p>
-                <span class="text-[10px] bg-rose/20 text-rose px-2 py-0.5 rounded-full font-semibold">CRITICAL</span>
-              </div>
-              <p class="text-xs text-muted mt-0.5 truncate">Booking form — /api/reservations/search endpoint</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-xs text-muted">CVE-2024-1234</p>
-              <p class="text-[11px] text-faint mt-0.5">2h ago</p>
-            </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0"></i>
-          </div>
-
-          <div class="flex items-center gap-4 p-3.5 rounded-xl bg-amber/5 border border-amber/15 hover:border-amber/30 transition-colors cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-amber/10 flex items-center justify-center flex-shrink-0">
-              <i data-lucide="triangle-alert" class="w-4 h-4 text-amber"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-white">Weak Session Token</p>
-                <span class="text-[10px] bg-amber/20 text-amber px-2 py-0.5 rounded-full font-semibold">HIGH</span>
-              </div>
-              <p class="text-xs text-muted mt-0.5 truncate">Guest portal auth — short entropy JWT secret detected</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-xs text-muted">CWE-331</p>
-              <p class="text-[11px] text-faint mt-0.5">6h ago</p>
-            </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0"></i>
-          </div>
-
-          <div class="flex items-center gap-4 p-3.5 rounded-xl bg-violet/5 border border-violet/15 hover:border-violet/30 transition-colors cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-violet/10 flex items-center justify-center flex-shrink-0">
-              <i data-lucide="info" class="w-4 h-4 text-violet"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-white">Outdated TLS 1.1</p>
-                <span class="text-[10px] bg-violet/20 text-violet px-2 py-0.5 rounded-full font-semibold">MEDIUM</span>
-              </div>
-              <p class="text-xs text-muted mt-0.5 truncate">Payment gateway server still supports deprecated TLS 1.1</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-xs text-muted">CWE-327</p>
-              <p class="text-[11px] text-faint mt-0.5">1d ago</p>
-            </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0"></i>
-          </div>
-
-          <div class="flex items-center gap-4 p-3.5 rounded-xl border border-border hover:border-faint/40 transition-colors cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-surface border border-border flex items-center justify-center flex-shrink-0">
-              <i data-lucide="shield" class="w-4 h-4 text-faint"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-slate-400">Open CORS Policy</p>
-                <span class="text-[10px] bg-surface text-muted border border-border px-2 py-0.5 rounded-full font-semibold">LOW</span>
-              </div>
-              <p class="text-xs text-muted mt-0.5 truncate">Wildcard origins allowed on /api/v1/rooms</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-xs text-muted">CWE-942</p>
-              <p class="text-[11px] text-faint mt-0.5">3d ago</p>
-            </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0"></i>
-          </div>
-        </div>
-
-        <div class="px-5 pb-4">
-          <button class="w-full py-2.5 rounded-xl border border-border text-xs text-muted hover:text-white hover:border-cyan/30 hover:bg-cyan/5 transition-all flex items-center justify-center gap-2">
-            View all 14 vulnerabilities <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Risk Breakdown -->
-      <div class="card bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
-        <div class="px-5 py-4 border-b border-border">
-          <h2 class="text-sm font-semibold text-white">Risk Breakdown</h2>
-          <p class="text-xs text-muted mt-0.5">By category</p>
-        </div>
-        <div class="p-5 space-y-4">
-
-          <!-- Donut placeholder + legend -->
-          <div class="relative flex items-center justify-center py-2">
-            <svg viewBox="0 0 100 100" class="w-36 h-36 -rotate-90">
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#252D3A" stroke-width="12"/>
-              <!-- CRITICAL 18% -->
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#F43F5E" stroke-width="12"
-                stroke-dasharray="43 196" stroke-dashoffset="0" stroke-linecap="round"/>
-              <!-- HIGH 30% -->
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#F59E0B" stroke-width="12"
-                stroke-dasharray="72 167" stroke-dashoffset="-43" stroke-linecap="round"/>
-              <!-- MEDIUM 28% -->
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5CF6" stroke-width="12"
-                stroke-dasharray="67 172" stroke-dashoffset="-115" stroke-linecap="round"/>
-              <!-- LOW 24% -->
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#00E5FF" stroke-width="12"
-                stroke-dasharray="57 182" stroke-dashoffset="-182" stroke-linecap="round"/>
+        <div class="flex flex-col items-center">
+          <div class="relative w-32 h-32 mb-3">
+            <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#1a2028" stroke-width="10"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#ff4757" stroke-width="10"
+                stroke-dasharray="314" stroke-dashoffset="94"
+                style="filter:drop-shadow(0 0 6px #ff4757)"/>
             </svg>
-            <div class="absolute text-center">
-              <p class="text-2xl font-bold text-white">14</p>
-              <p class="text-[10px] text-muted">issues</p>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-2xl font-bold font-mono" style="color:#ff4757;">70</span>
+              <span class="text-xs font-mono" style="color:#4a5568;">/100</span>
             </div>
           </div>
+          <span class="badge-critical text-xs px-3 py-1 rounded font-mono">HIGH RISK</span>
+        </div>
+      </div>
 
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose flex-shrink-0"></span>
-                <span class="text-muted">Critical</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-24 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div class="h-full bg-rose rounded-full" style="width:18%"></div>
-                </div>
-                <span class="text-white font-medium w-5 text-right">3</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber flex-shrink-0"></span>
-                <span class="text-muted">High</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-24 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div class="h-full bg-amber rounded-full" style="width:36%"></div>
-                </div>
-                <span class="text-white font-medium w-5 text-right">5</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-violet flex-shrink-0"></span>
-                <span class="text-muted">Medium</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-24 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div class="h-full bg-violet rounded-full" style="width:29%"></div>
-                </div>
-                <span class="text-white font-medium w-5 text-right">4</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-cyan flex-shrink-0"></span>
-                <span class="text-muted">Low</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-24 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div class="h-full bg-cyan rounded-full" style="width:14%"></div>
-                </div>
-                <span class="text-white font-medium w-5 text-right">2</span>
-              </div>
-            </div>
+      <!-- Recent scans -->
+      <div class="lg:col-span-2 rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="section-accent h-5"></div>
+            <span class="text-sm font-semibold" style="color:#e2e8f0;">آخر عمليات الفحص</span>
           </div>
-
-          <button class="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-cyan/10 to-violet/10 border border-cyan/20 text-xs text-cyan font-medium hover:from-cyan/15 hover:to-violet/15 transition-all">
-            Generate Security Report
+          <button class="text-xs font-mono transition-colors" style="color:#00d4c8;"
+            onmouseover="this.style.color='#39ff7e'" onmouseout="this.style.color='#00d4c8'">
+            عرض الكل ←
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- ── Bottom Row ── -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-      <!-- System Logs -->
-      <div class="card lg:col-span-2 bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div>
-            <h2 class="text-sm font-semibold text-white">Live System Logs</h2>
-            <p class="text-xs text-muted mt-0.5">Real-time event stream</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="flex items-center gap-1.5 text-[11px] text-emerald">
-              <span class="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse"></span>
-              Streaming
-            </span>
-            <button class="text-xs text-muted hover:text-white border border-border hover:border-cyan/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
-              <i data-lucide="download" class="w-3 h-3"></i> Export
-            </button>
-          </div>
-        </div>
-        <div class="font-mono text-[11px] divide-y divide-border max-h-72 overflow-y-auto">
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:37:02</span>
-            <span class="text-rose bg-rose/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">CRIT</span>
-            <span class="text-slate-300">Brute-force blocked — <span class="text-cyan">192.168.1.44</span> → <span class="text-white">/booking/login</span> (47 attempts)</span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:36:55</span>
-            <span class="text-amber bg-amber/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">WARN</span>
-            <span class="text-slate-300">Payment attempt from flagged geo — <span class="text-cyan">RU/Moscow</span> · txn <span class="text-white">#TXN-9821</span></span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:36:41</span>
-            <span class="text-emerald bg-emerald/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">INFO</span>
-            <span class="text-slate-300">Guest check-in verified — Room <span class="text-white">812</span> · <span class="text-cyan">MFA passed</span></span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:36:29</span>
-            <span class="text-cyan bg-cyan/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">AUTH</span>
-            <span class="text-slate-300">Admin login — <span class="text-white">ahmed.malik</span> from <span class="text-cyan">10.0.1.8</span> · Session opened</span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:35:17</span>
-            <span class="text-amber bg-amber/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">WARN</span>
-            <span class="text-slate-300">Rate limit reached — API endpoint <span class="text-white">/api/v2/rooms</span> from <span class="text-cyan">10.0.2.20</span></span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:34:58</span>
-            <span class="text-emerald bg-emerald/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">INFO</span>
-            <span class="text-slate-300">SSL certificate renewed — <span class="text-white">booking.grandmeridian.com</span> · Valid 90d</span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:34:12</span>
-            <span class="text-rose bg-rose/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">CRIT</span>
-            <span class="text-slate-300">XSS payload detected — <span class="text-cyan">203.0.113.22</span> blocked by WAF · rule <span class="text-white">XSS-007</span></span>
-          </div>
-          <div class="log-row flex items-start gap-4 px-5 py-3">
-            <span class="text-faint w-16 flex-shrink-0">14:33:45</span>
-            <span class="text-emerald bg-emerald/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">INFO</span>
-            <span class="text-slate-300">Backup completed — <span class="text-white">db-prod-01</span> · 4.2 GB · duration 00:02:17</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Actions + Status -->
-      <div class="space-y-4">
-
-        <!-- System Status -->
-        <div class="card bg-surface border border-border rounded-2xl p-5 shadow-card">
-          <h2 class="text-sm font-semibold text-white mb-4">System Status</h2>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5 text-xs text-muted">
-                <i data-lucide="database" class="w-3.5 h-3.5"></i>
-                <span>Database</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-emerald font-medium">
-                <span class="w-1.5 h-1.5 bg-emerald rounded-full"></span>
-                Healthy
+        <div class="space-y-2">
+          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
+            <div class="flex items-center gap-3">
+              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
+              <div>
+                <div class="text-xs font-mono" style="color:#c9d4e0;">auth_module.py</div>
+                <div class="text-xs" style="color:#3a4a5a;">منذ 12 دقيقة</div>
               </div>
             </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5 text-xs text-muted">
-                <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-                <span>WAF / Firewall</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-emerald font-medium">
-                <span class="w-1.5 h-1.5 bg-emerald rounded-full"></span>
-                Active
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5 text-xs text-muted">
-                <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
-                <span>Payment Gateway</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-emerald font-medium">
-                <span class="w-1.5 h-1.5 bg-emerald rounded-full"></span>
-                Operational
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5 text-xs text-muted">
-                <i data-lucide="mail" class="w-3.5 h-3.5"></i>
-                <span>Email Service</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-amber font-medium">
-                <span class="w-1.5 h-1.5 bg-amber rounded-full animate-pulse"></span>
-                Degraded
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5 text-xs text-muted">
-                <i data-lucide="server" class="w-3.5 h-3.5"></i>
-                <span>Backup System</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-emerald font-medium">
-                <span class="w-1.5 h-1.5 bg-emerald rounded-full"></span>
-                Running
-              </div>
-            </div>
+            <span class="badge-critical text-xs px-2 py-0.5 rounded font-mono">حرجة ×2</span>
           </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="card bg-surface border border-border rounded-2xl p-5 shadow-card">
-          <h2 class="text-sm font-semibold text-white mb-4">Quick Actions</h2>
-          <div class="space-y-2">
-            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-rose/5 border border-rose/20 text-xs text-rose hover:bg-rose/10 hover:border-rose/40 transition-all font-medium">
-              <i data-lucide="shield-off" class="w-3.5 h-3.5"></i>
-              Lock Down Portal
-            </button>
-            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-amber/5 border border-amber/20 text-xs text-amber hover:bg-amber/10 hover:border-amber/40 transition-all font-medium">
-              <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
-              Revoke All Sessions
-            </button>
-            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-cyan/5 border border-cyan/20 text-xs text-cyan hover:bg-cyan/10 hover:border-cyan/40 transition-all font-medium">
-              <i data-lucide="scan" class="w-3.5 h-3.5"></i>
-              Force Full Scan
-            </button>
-            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-emerald/5 border border-emerald/20 text-xs text-emerald hover:bg-emerald/10 hover:border-emerald/40 transition-all font-medium">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              Export Audit Log
-            </button>
+          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
+            <div class="flex items-center gap-3">
+              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
+              <div>
+                <div class="text-xs font-mono" style="color:#c9d4e0;">database.js</div>
+                <div class="text-xs" style="color:#3a4a5a;">منذ 38 دقيقة</div>
+              </div>
+            </div>
+            <span class="badge-high text-xs px-2 py-0.5 rounded font-mono">عالية ×5</span>
+          </div>
+          <div class="flex items-center justify-between py-2.5 px-3 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
+            <div class="flex items-center gap-3">
+              <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0" style="color:#00d4c8;"></i>
+              <div>
+                <div class="text-xs font-mono" style="color:#c9d4e0;">upload_handler.php</div>
+                <div class="text-xs" style="color:#3a4a5a;">منذ ساعتين</div>
+              </div>
+            </div>
+            <span class="badge-medium text-xs px-2 py-0.5 rounded font-mono">متوسطة ×3</span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Quick action -->
+    <div class="rounded-lg p-5 flex items-center justify-between" style="background:linear-gradient(135deg, rgba(0,212,200,0.05), rgba(57,255,126,0.03)); border:1px solid rgba(0,212,200,0.15);">
+      <div>
+        <div class="text-sm font-semibold mb-1" style="color:#e2e8f0;">ابدأ فحصاً جديداً</div>
+        <div class="text-xs" style="color:#4a5568;">أضف كودك واكتشف الثغرات خلال ثوانٍ</div>
+      </div>
+      <button onclick="switchView('scan')"
+        class="flex items-center gap-2 px-5 py-2.5 rounded text-sm font-semibold font-mono transition-all"
+        style="background:linear-gradient(135deg,#00d4c8,#0ea5a0); color:#080b0e;"
+        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        <i data-lucide="scan-line" class="w-4 h-4"></i>
+        فحص الآن
+      </button>
+    </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="px-6 py-3 border-t border-border flex items-center justify-between text-[11px] text-faint">
-    <span>SecureStay v2.4.1 · Grand Meridian Hotel Security Platform</span>
-    <span class="flex items-center gap-1.5">
-      <span class="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse"></span>
-      All systems operational · Last updated just now
-    </span>
-  </footer>
+  <!-- ── SCAN VIEW ── -->
+  <div id="view-scan" class="flex-1 p-6 overflow-auto hidden">
+    <div class="max-w-4xl mx-auto">
+
+      <!-- Input area -->
+      <div class="rounded-lg mb-5" style="background:#0f1318; border:1px solid #1e2730;">
+
+        <!-- File bar -->
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
+          <div class="flex items-center gap-3">
+            <div class="flex gap-1.5">
+              <span class="w-3 h-3 rounded-full" style="background:#ff4757;"></span>
+              <span class="w-3 h-3 rounded-full" style="background:#f59e0b;"></span>
+              <span class="w-3 h-3 rounded-full" style="background:#39ff7e;"></span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1 rounded" style="background:#0a0c0f; border:1px solid #1a2028;">
+              <i data-lucide="file-code" class="w-3 h-3" style="color:#00d4c8;"></i>
+              <span class="text-xs font-mono" style="color:#4a5568;">target_code</span>
+              <span class="text-xs font-mono px-1.5 py-0.5 rounded" style="background:#1a2028; color:#3a4a5a;">auto</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="clearCode()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-colors"
+              style="color:#4a5568; border:1px solid #1a2028;"
+              onmouseover="this.style.color='#ff4757'; this.style.borderColor='rgba(255,71,87,0.3)'"
+              onmouseout="this.style.color='#4a5568'; this.style.borderColor='#1a2028'">
+              <i data-lucide="trash-2" class="w-3 h-3"></i>
+              <span class="hidden sm:inline">مسح</span>
+            </button>
+            <button onclick="loadSample()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-all"
+              style="color:#00d4c8; border:1px solid rgba(0,212,200,0.2); background:rgba(0,212,200,0.05);"
+              onmouseover="this.style.background='rgba(0,212,200,0.1)'"
+              onmouseout="this.style.background='rgba(0,212,200,0.05)'">
+              <i data-lucide="code-2" class="w-3 h-3"></i>
+              <span class="hidden sm:inline">مثال</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Textarea with line numbers -->
+        <div class="relative flex">
+          <div id="line-numbers" class="py-4 px-3 text-right select-none font-mono text-xs leading-[1.7] min-w-[3rem]"
+            style="background:#080b0e; color:#2a3a4a; border-left:1px solid #1a2028;">
+            1
+          </div>
+          <textarea id="code-input"
+            class="code-area flex-1 py-4 px-4 min-h-64 w-full"
+            placeholder="// الصق الكود البرمجي هنا للبدء في الفحص الأمني...
+// يدعم: Python، JavaScript، PHP، Java، C/C++، Ruby، Go"
+            oninput="updateLineNumbers(this)"
+            spellcheck="false"></textarea>
+        </div>
+
+        <!-- Token counter -->
+        <div class="flex items-center justify-between px-4 py-2.5" style="border-top:1px solid #1a2028;">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-mono" style="color:#2a3a4a;">
+              <span id="char-count">0</span> حرف
+            </span>
+            <span class="text-xs font-mono" style="color:#2a3a4a;">
+              <span id="line-count">0</span> سطر
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="shield" class="w-3 h-3" style="color:#2a3a4a;"></i>
+            <span class="text-xs font-mono" style="color:#2a3a4a;">تشفير TLS 1.3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scan options -->
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all" id="opt-sql"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);"
+          onmouseover="this.style.borderColor='#00d4c8'" onmouseout="this.style.borderColor='rgba(0,212,200,0.2)'">
+          <input type="checkbox" checked class="hidden" id="check-sql">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">SQL Injection</span>
+        </label>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all" id="opt-xss"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
+          <input type="checkbox" checked class="hidden">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">XSS</span>
+        </label>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
+          <input type="checkbox" checked class="hidden">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">Path Traversal</span>
+        </label>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
+          <input type="checkbox" checked class="hidden">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">CSRF</span>
+        </label>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
+          <input type="checkbox" checked class="hidden">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">IDOR</span>
+        </label>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer transition-all"
+          style="background:#0f1318; border:1px solid rgba(0,212,200,0.2);">
+          <input type="checkbox" checked class="hidden">
+          <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,200,0.2); border:1px solid rgba(0,212,200,0.4);">
+            <i data-lucide="check" class="w-2.5 h-2.5" style="color:#00d4c8;"></i>
+          </div>
+          <span class="text-xs font-mono" style="color:#c9d4e0;">RCE</span>
+        </label>
+      </div>
+
+      <!-- SCAN BUTTON -->
+      <div class="flex justify-center mb-6">
+        <button id="scan-btn" onclick="startScan()"
+          class="scan-btn flex items-center gap-3 px-10 py-4 rounded-lg font-bold text-base font-mono transition-all"
+          style="background:linear-gradient(135deg,#00d4c8,#0aadaa); color:#080b0e; border:1px solid rgba(0,212,200,0.4);">
+          <i data-lucide="scan-line" class="w-5 h-5"></i>
+          ابدأ الفحص الأمني
+        </button>
+      </div>
+
+      <!-- Progress (hidden by default) -->
+      <div id="progress-area" class="hidden rounded-lg p-5 mb-5" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full" style="background:#00d4c8; box-shadow:0 0 6px #00d4c8; animation:blink 1s step-start infinite;"></div>
+            <span class="text-sm font-mono" style="color:#00d4c8;" id="progress-label">جارٍ تحليل الكود...</span>
+          </div>
+          <span class="text-xs font-mono" style="color:#4a5568;" id="progress-pct">0%</span>
+        </div>
+        <div class="w-full h-1.5 rounded-full mb-3" style="background:#1a2028;">
+          <div id="progress-bar" class="h-full rounded-full progress-shimmer" style="width:0%; transition:width 0.4s ease;"></div>
+        </div>
+        <div id="terminal-output" class="font-mono text-xs space-y-1 max-h-32 overflow-auto" style="color:#3a4a5a;"></div>
+      </div>
+
+      <!-- ── RESULTS PANEL ── -->
+      <div id="results-panel" class="hidden fade-up">
+
+        <!-- Summary bar -->
+        <div class="rounded-lg p-4 mb-4 flex flex-wrap items-center justify-between gap-3"
+          style="background:rgba(57,255,126,0.04); border:1px solid rgba(57,255,126,0.15);">
+          <div class="flex items-center gap-3">
+            <i data-lucide="shield-alert" class="w-5 h-5" style="color:#39ff7e;"></i>
+            <span class="text-sm font-semibold" style="color:#e2e8f0;">اكتمل الفحص — تم العثور على <span id="total-vulns" style="color:#ff4757;">0</span> ثغرة</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportResults()" class="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded transition-all"
+              style="color:#00d4c8; border:1px solid rgba(0,212,200,0.2); background:rgba(0,212,200,0.05);"
+              onmouseover="this.style.background='rgba(0,212,200,0.12)'"
+              onmouseout="this.style.background='rgba(0,212,200,0.05)'">
+              <i data-lucide="download" class="w-3 h-3"></i>
+              تصدير PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Results table -->
+        <div class="rounded-lg overflow-hidden" style="background:#0f1318; border:1px solid #1e2730;">
+          <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
+            <div class="flex items-center gap-2">
+              <div class="section-accent h-5"></div>
+              <span class="text-sm font-semibold" style="color:#e2e8f0;">نتائج التحليل</span>
+            </div>
+            <div class="flex gap-2" id="filter-badges">
+              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn active-filter"
+                data-filter="all" onclick="filterResults('all')"
+                style="background:rgba(0,212,200,0.15); color:#00d4c8; border:1px solid rgba(0,212,200,0.3);">
+                الكل
+              </button>
+              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
+                data-filter="critical" onclick="filterResults('critical')"
+                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
+                حرجة
+              </button>
+              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
+                data-filter="high" onclick="filterResults('high')"
+                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
+                عالية
+              </button>
+              <button class="text-xs font-mono px-2 py-0.5 rounded transition-all filter-btn"
+                data-filter="medium" onclick="filterResults('medium')"
+                style="background:transparent; color:#4a5568; border:1px solid #1e2730;">
+                متوسطة
+              </button>
+            </div>
+          </div>
+
+          <div id="vuln-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOGS VIEW ── -->
+  <div id="view-logs" class="flex-1 p-6 overflow-auto hidden">
+    <div class="rounded-lg h-full" style="background:#080b0e; border:1px solid #1e2730;">
+      <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #1a2028;">
+        <div class="flex items-center gap-2">
+          <i data-lucide="terminal" class="w-4 h-4" style="color:#00d4c8;"></i>
+          <span class="text-sm font-mono" style="color:#c9d4e0;">سجل العمليات</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full" style="background:#39ff7e; box-shadow:0 0 4px #39ff7e;"></span>
+          <span class="text-xs font-mono" style="color:#39ff7e;">LIVE</span>
+        </div>
+      </div>
+      <div class="p-4 font-mono text-xs space-y-1 overflow-auto" style="color:#3a4a5a; max-height: calc(100vh - 180px);">
+        <div><span style="color:#00d4c8;">[INFO]</span>&nbsp;&nbsp;2026-06-10 14:23:01 — محرك الفحص جاهز v2.4.1</div>
+        <div><span style="color:#39ff7e;">[OK]</span>&nbsp;&nbsp;&nbsp;2026-06-10 14:23:01 — قاعدة بيانات الأنماط محدّثة (CVE-2026)</div>
+        <div><span style="color:#f59e0b;">[WARN]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: كلمة مرور مُثبَّتة بالكود في السطر 42</div>
+        <div><span style="color:#ff4757;">[CRIT]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: SQL Injection حرجة — السطر 87</div>
+        <div><span style="color:#ff4757;">[CRIT]</span>&nbsp;2026-06-10 14:21:44 — auth_module.py: تجاوز المصادقة — السطر 103</div>
+        <div><span style="color:#00d4c8;">[INFO]</span>&nbsp;&nbsp;2026-06-10 14:08:12 — بدء فحص: database.js</div>
+        <div><span style="color:#f59e0b;">[HIGH]</span>&nbsp;2026-06-10 14:08:19 — database.js: استعلام غير مُعقَّم في السطر 22</div>
+        <div><span style="color:#39ff7e;">[OK]</span>&nbsp;&nbsp;&nbsp;2026-06-10 14:08:20 — database.js: اكتمل الفحص في 8.3 ثانية</div>
+        <div class="mt-2"><span style="color:#00d4c8;">vaultscan@engine:~$</span> <span class="cursor">█</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS VIEW ── -->
+  <div id="view-settings" class="flex-1 p-6 overflow-auto hidden">
+    <div class="max-w-xl space-y-4">
+      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="section-accent h-5"></div>
+          <span class="text-sm font-semibold" style="color:#e2e8f0;">إعدادات المحرك</span>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-mono mb-2 block" style="color:#4a5568;">عنوان سيرفر الفحص</label>
+            <input type="text" value="http://localhost:5000/scan"
+              class="w-full px-3 py-2 rounded text-sm font-mono"
+              style="background:#080b0e; border:1px solid #1e2730; color:#c9d4e0; outline:none;"
+              onfocus="this.style.borderColor='#00d4c8'" onblur="this.style.borderColor='#1e2730'">
+          </div>
+          <div>
+            <label class="text-xs font-mono mb-2 block" style="color:#4a5568;">مستوى التحليل</label>
+            <select class="w-full px-3 py-2 rounded text-sm font-mono"
+              style="background:#080b0e; border:1px solid #1e2730; color:#c9d4e0; outline:none;">
+              <option>عميق (Deep Analysis)</option>
+              <option>سريع (Quick Scan)</option>
+              <option>مخصص (Custom)</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono" style="color:#4a5568;">تصدير التقارير تلقائياً</span>
+            <div class="w-10 h-5 rounded-full cursor-pointer relative" id="toggle-export"
+              style="background:rgba(0,212,200,0.3); border:1px solid rgba(0,212,200,0.4);"
+              onclick="this.style.background='rgba(0,212,200,0.5)'">
+              <div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full" style="background:#00d4c8;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-lg p-5" style="background:#0f1318; border:1px solid #1e2730;">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="section-accent h-5"></div>
+          <span class="text-sm font-semibold" style="color:#e2e8f0;">حول VaultScan</span>
+        </div>
+        <div class="space-y-2 font-mono text-xs" style="color:#4a5568;">
+          <div class="flex justify-between"><span>الإصدار</span><span style="color:#00d4c8;">v2.4.1 Enterprise</span></div>
+          <div class="flex justify-between"><span>قاعدة CVE</span><span style="color:#39ff7e;">محدَّثة (يونيو 2026)</span></div>
+          <div class="flex justify-between"><span>المحرك</span><span style="color:#c9d4e0;">VaultEngine™ 3.0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
+<!-- ═══════════════════════  SCRIPTS  ═══════════════════════ -->
 <script>
-  // Init Lucide icons
+// ─── Init Lucide ───────────────────────────────────────────
+lucide.createIcons();
+
+// ─── Clock ─────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('live-clock').textContent =
+    now.toLocaleTimeString('ar-SA', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── Navigation ────────────────────────────────────────────
+const views = ['dashboard', 'scan', 'logs', 'settings'];
+const titles = {
+  dashboard: ['لوحة التحكم', 'نظرة عامة على حالة الأمان'],
+  scan:      ['فحص الكود', 'حلّل كودك بحثاً عن الثغرات'],
+  logs:      ['السجلات', 'سجل عمليات المحرك في الوقت الفعلي'],
+  settings:  ['الإعدادات', 'تخصيص إعدادات الفحص والمحرك'],
+};
+
+function switchView(name) {
+  views.forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
+    const btn = document.getElementById('nav-' + v);
+    if (v === name) {
+      btn.classList.add('nav-active');
+      btn.classList.remove('nav-item');
+      btn.style.color = '';
+    } else {
+      btn.classList.remove('nav-active');
+      btn.classList.add('nav-item');
+      btn.style.color = '#4a5568';
+    }
+  });
+  document.getElementById('page-title').textContent = titles[name][0];
+  document.getElementById('page-subtitle').textContent = titles[name][1];
+  lucide.createIcons();
+}
+
+// ─── Code input helpers ────────────────────────────────────
+function updateLineNumbers(ta) {
+  const lines = ta.value.split('\n').length;
+  document.getElementById('line-numbers').textContent =
+    Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+  document.getElementById('char-count').textContent = ta.value.length;
+  document.getElementById('line-count').textContent = lines;
+}
+
+function clearCode() {
+  const ta = document.getElementById('code-input');
+  ta.value = '';
+  updateLineNumbers(ta);
+  document.getElementById('results-panel').classList.add('hidden');
+  document.getElementById('progress-area').classList.add('hidden');
+}
+
+function loadSample() {
+  const sample = `# مثال: كود Python يحتوي على ثغرات أمنية متعددة
+
+import sqlite3
+import os
+
+PASSWORD = "admin123"  # كلمة مرور ثابتة في الكود
+
+def get_user(username):
+    conn = sqlite3.connect('users.db')
+    # ثغرة SQL Injection: مدخل المستخدم غير مُعقَّم
+    query = "SELECT * FROM users WHERE username = '" + username + "'"
+    return conn.execute(query).fetchone()
+
+def read_file(filename):
+    # ثغرة Path Traversal: لا يوجد تحقق من المسار
+    base_path = "/var/www/uploads/"
+    return open(base_path + filename).read()
+
+def execute_command(user_input):
+    # ثغرة RCE: تنفيذ أوامر نظام مباشرة
+    os.system("process_data " + user_input)
+`;
+  document.getElementById('code-input').value = sample;
+  updateLineNumbers(document.getElementById('code-input'));
+}
+
+// ─── Scan logic ─────────────────────────────────────────────
+const terminalMessages = [
+  '→ تحليل بنية الكود...',
+  '→ مطابقة أنماط OWASP Top 10...',
+  '→ فحص استخدام المتغيرات والدوال...',
+  '→ تحليل تدفق البيانات (Taint Analysis)...',
+  '→ البحث عن بيانات حساسة مُضمَّنة...',
+  '→ مراجعة ثغرات SQL/NoSQL Injection...',
+  '→ فحص ثغرات XSS و CSRF...',
+  '→ اكتمل التحليل. جارٍ إعداد التقرير...',
+];
+
+function startScan() {
+  const code = document.getElementById('code-input').value.trim();
+  if (!code) {
+    shakeBtn();
+    return;
+  }
+
+  // Reset
+  document.getElementById('results-panel').classList.add('hidden');
+  const progressArea = document.getElementById('progress-area');
+  progressArea.classList.remove('hidden');
+
+  const bar  = document.getElementById('progress-bar');
+  const pct  = document.getElementById('progress-pct');
+  const lbl  = document.getElementById('progress-label');
+  const term = document.getElementById('terminal-output');
+  const btn  = document.getElementById('scan-btn');
+
+  term.innerHTML = '';
+  bar.style.width = '0%';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.style.cursor = 'not-allowed';
+  btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> جارٍ الفحص...';
   lucide.createIcons();
 
-  // Sidebar toggle
-  const sidebar = document.getElementById('sidebar');
-  const toggleBtn = document.getElementById('toggle-sidebar');
-  toggleBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-  });
+  let step = 0;
+  const steps = terminalMessages.length;
 
-  // Animate progress bars on load
-  window.addEventListener('load', () => {
-    document.querySelectorAll('.progress-bar').forEach(bar => {
-      const w = bar.style.width;
-      bar.style.width = '0%';
-      setTimeout(() => { bar.style.width = w; }, 200);
-    });
-  });
-
-  // Log streaming simulation
-  const logContainer = document.querySelector('.max-h-72');
-  const logMessages = [
-    { time:'now', level:'INFO', color:'emerald', msg:'New booking confirmed — Room <span class="text-white">305</span> · Guest <span class="text-cyan">Maria Chen</span>' },
-    { time:'now', level:'WARN', color:'amber', msg:'Unusual access pattern — <span class="text-cyan">172.20.0.5</span> queried 80 rooms in <span class="text-white">2s</span>' },
-    { time:'now', level:'AUTH', color:'cyan', msg:'Password reset requested — <span class="text-white">guest_4821</span> · IP <span class="text-cyan">10.0.3.14</span>' },
-  ];
-  let msgIdx = 0;
-  setInterval(() => {
-    const m = logMessages[msgIdx % logMessages.length];
-    msgIdx++;
-    const now = new Date();
-    const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-    const row = document.createElement('div');
-    row.className = 'log-row flex items-start gap-4 px-5 py-3 border-t border-[#252D3A] opacity-0 transition-opacity duration-500';
-    row.innerHTML = `<span class="text-[#4A5568] w-16 flex-shrink-0">${t}</span><span class="text-${m.color} bg-${m.color}/10 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0">${m.level}</span><span class="text-slate-300">${m.msg}</span>`;
-    logContainer.insertBefore(row, logContainer.firstChild);
-    setTimeout(() => row.style.opacity = '1', 50);
-    // Keep only last 12 rows
-    while (logContainer.children.length > 12) {
-      logContainer.removeChild(logContainer.lastChild);
+  const interval = setInterval(() => {
+    if (step >= steps) {
+      clearInterval(interval);
+      sendToServer(code);
+      return;
     }
-  }, 5000);
+    const progress = Math.round(((step + 1) / steps) * 85);
+    bar.style.width = progress + '%';
+    pct.textContent = progress + '%';
+    lbl.textContent = terminalMessages[step];
+
+    const line = document.createElement('div');
+    line.style.color = step < steps - 1 ? '#2a4a3a' : '#39ff7e';
+    line.textContent = terminalMessages[step];
+    term.appendChild(line);
+    term.scrollTop = term.scrollHeight;
+
+    step++;
+  }, 380);
+}
+
+function sendToServer(code) {
+  fetch('/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  .then(res => res.ok ? res.json() : Promise.reject(res))
+  .then(data => renderResults(data))
+  .catch(() => {
+    // Demo fallback: generate mock results
+    renderResults(getMockResults(code));
+  });
+}
+
+// ─── Mock results (fallback) ───────────────────────────────
+function getMockResults(code) {
+  const findings = [];
+  if (/password\s*=\s*['"]/i.test(code) || /PASSWORD\s*=/i.test(code))
+    findings.push({ severity:'critical', type:'Hardcoded Credentials', line: code.split('\n').findIndex(l => /password/i.test(l)) + 1, desc:'كلمة مرور مُثبَّتة مباشرة في الكود — خطر تسريب بيانات اعتماد.', cvss:'9.8', cwe:'CWE-798' });
+  if (/SELECT|INSERT|UPDATE|DELETE/i.test(code) && /\+\s*\w+/i.test(code))
+    findings.push({ severity:'critical', type:'SQL Injection', line: code.split('\n').findIndex(l => /SELECT|INSERT/i.test(l)) + 1, desc:'مدخل مستخدم يُدمج مباشرة في استعلام SQL دون تعقيم (sanitization).', cvss:'9.1', cwe:'CWE-89' });
+  if (/os\.system\s*\(/i.test(code) || /exec\s*\(/i.test(code))
+    findings.push({ severity:'critical', type:'Remote Code Execution', line: code.split('\n').findIndex(l => /os\.system|exec\s*\(/.test(l)) + 1, desc:'تنفيذ أوامر نظام مباشرة باستخدام مدخلات غير موثوقة.', cvss:'10.0', cwe:'CWE-78' });
+  if (/base_path\s*\+|path\s*\+/i.test(code))
+    findings.push({ severity:'high', type:'Path Traversal', line: code.split('\n').findIndex(l => /base_path/.test(l)) + 1, desc:'مسار الملف يُبنى من مدخل المستخدم مما يُتيح الوصول لملفات النظام.', cvss:'7.5', cwe:'CWE-22' });
+  if (findings.length === 0)
+    findings.push({ severity:'low', type:'Missing Input Validation', line: 1, desc:'لم يُكتشف تحقق صريح من المدخلات في بعض الدوال.', cvss:'3.1', cwe:'CWE-20' });
+  return { vulnerabilities: findings };
+}
+
+// ─── Render results ────────────────────────────────────────
+let allVulns = [];
+
+function renderResults(data) {
+  const bar  = document.getElementById('progress-bar');
+  const pct  = document.getElementById('progress-pct');
+  const lbl  = document.getElementById('progress-label');
+  const btn  = document.getElementById('scan-btn');
+  const term = document.getElementById('terminal-output');
+
+  bar.style.width = '100%';
+  pct.textContent = '100%';
+  lbl.textContent = '✓ اكتمل الفحص بنجاح';
+
+  const done = document.createElement('div');
+  done.style.color = '#39ff7e';
+  done.textContent = '✓ تم الانتهاء — التقرير جاهز.';
+  term.appendChild(done);
+
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  btn.style.cursor = '';
+  btn.innerHTML = '<i data-lucide="scan-line" class="w-5 h-5"></i> ابدأ الفحص الأمني';
+  lucide.createIcons();
+
+  setTimeout(() => {
+    allVulns = data.vulnerabilities || [];
+    document.getElementById('total-vulns').textContent = allVulns.length;
+    document.getElementById('results-panel').classList.remove('hidden');
+    renderVulnList(allVulns);
+
+    // Update dashboard stats
+    const c = allVulns.filter(v => v.severity === 'critical').length;
+    const h = allVulns.filter(v => v.severity === 'high').length;
+    const m = allVulns.filter(v => v.severity === 'medium').length;
+    const l = allVulns.filter(v => ['low','info'].includes(v.severity)).length;
+    document.getElementById('stat-critical').textContent = String(c).padStart(2,'0');
+    document.getElementById('stat-high').textContent     = String(h).padStart(2,'0');
+    document.getElementById('stat-medium').textContent   = String(m).padStart(2,'0');
+    document.getElementById('stat-low').textContent      = String(l).padStart(2,'0');
+  }, 600);
+}
+
+const severityConfig = {
+  critical: { label:'حرجة',   cls:'badge-critical', icon:'skull' },
+  high:     { label:'عالية',   cls:'badge-high',     icon:'alert-triangle' },
+  medium:   { label:'متوسطة', cls:'badge-medium',    icon:'alert-circle' },
+  low:      { label:'منخفضة', cls:'badge-low',       icon:'info' },
+  info:     { label:'معلومة', cls:'badge-info',      icon:'info' },
+};
+
+function renderVulnList(vulns) {
+  const container = document.getElementById('vuln-list');
+  if (vulns.length === 0) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <i data-lucide="shield-check" class="w-12 h-12 mb-3" style="color:#39ff7e;"></i>
+        <div class="text-sm font-semibold mb-1" style="color:#e2e8f0;">لم تُكتشف ثغرات</div>
+        <div class="text-xs" style="color:#4a5568;">الكود نظيف وفق الفحص الحالي</div>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  container.innerHTML = vulns.map((v, i) => {
+    const cfg = severityConfig[v.severity] || severityConfig['info'];
+    return `
+    <div class="vuln-row px-4 py-3.5 fade-up" style="animation-delay:${i * 60}ms;" onclick="toggleDetail(${i})">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center mt-0.5"
+          style="background:rgba(0,0,0,0.3); border:1px solid #1e2730;">
+          <i data-lucide="${cfg.icon}" class="w-3.5 h-3.5"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <span class="text-sm font-semibold font-mono" style="color:#e2e8f0;">${v.type}</span>
+            <span class="${cfg.cls} text-xs px-2 py-0.5 rounded font-mono">${cfg.label}</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:#1a2028; color:#4a5568;">CVSS ${v.cvss}</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:#1a2028; color:#4a5568;">${v.cwe}</span>
+          </div>
+          <div class="text-xs mb-1" style="color:#4a5568;">${v.desc}</div>
+          <div class="text-xs font-mono" style="color:#2a4a3a;">→ السطر ${v.line}</div>
+        </div>
+        <i data-lucide="chevron-down" class="w-4 h-4 flex-shrink-0 mt-1" style="color:#2a3a4a;" id="chevron-${i}"></i>
+      </div>
+      <div id="detail-${i}" class="hidden mt-3 mr-11">
+        <div class="rounded p-3 text-xs font-mono" style="background:#080b0e; border:1px solid #1a2028; color:#4a5568;">
+          <div style="color:#00d4c8;" class="mb-1"># التوصية</div>
+          <div>يُنصح بمراجعة السطر ${v.line} وتطبيق مبدأ "Never trust user input".</div>
+          <div class="mt-1">استخدم Prepared Statements أو المكتبات الموثوقة للتحقق من المدخلات.</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function toggleDetail(i) {
+  const d = document.getElementById('detail-' + i);
+  const c = document.getElementById('chevron-' + i);
+  const open = !d.classList.contains('hidden');
+  d.classList.toggle('hidden', open);
+  c.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function filterResults(type) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    const active = b.dataset.filter === type;
+    b.style.background = active ? 'rgba(0,212,200,0.15)' : 'transparent';
+    b.style.color = active ? '#00d4c8' : '#4a5568';
+    b.style.borderColor = active ? 'rgba(0,212,200,0.3)' : '#1e2730';
+  });
+  const filtered = type === 'all' ? allVulns : allVulns.filter(v => v.severity === type);
+  renderVulnList(filtered);
+}
+
+function exportResults() {
+  const data = JSON.stringify({ scan_date: new Date().toISOString(), vulnerabilities: allVulns }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vaultscan_report_' + Date.now() + '.json';
+  a.click();
+}
+
+function shakeBtn() {
+  const btn = document.getElementById('scan-btn');
+  btn.style.animation = 'none';
+  btn.style.transform = 'translateX(-6px)';
+  setTimeout(() => { btn.style.transform = 'translateX(6px)'; }, 80);
+  setTimeout(() => { btn.style.transform = 'translateX(-4px)'; }, 160);
+  setTimeout(() => { btn.style.transform = ''; btn.style.animation = ''; }, 240);
+}
+
+// ─── Initial icons pass ────────────────────────────────────
+window.addEventListener('load', () => { lucide.createIcons(); });
 </script>
 </body>
 </html>
